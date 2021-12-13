@@ -1,6 +1,6 @@
 # About
 
-A PyWebIO project to check the temporal validity of your termination and to calculate any possible embargo and notice periods under Swiss law. The hosted version is available here. Currently undergoing beta testing.
+A PyWebIO project to check the temporal validity of your termination and to calculate any possible embargo and notice periods under Swiss law. The hosted version is [available here](https://www.llq.ch/tools/termination-calc). Currently undergoing beta testing.
 
 # Overview of Features
 

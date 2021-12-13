@@ -25,6 +25,6 @@ A PyWebIO project to check the temporal validity of your termination and to calc
 
 # Contribute
 
-- If your input returns an error or incorrect results, please open an [issue](https://github.com/quadratecode/ch-termination-calculator/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) containing your input data
-- For questions and feature requests, please use [GitHub discussions](https://github.com/quadratecode/ch-termination-calculator/discussions)
+- If your input returns an error or incorrect results, please open an [issue](https://github.com/quadratecode/ch-termination-calc/issues) containing your input data
+- For questions and feature requests, please use [GitHub discussions](https://github.com/quadratecode/ch-termination-calc/discussions)
 - PRs are welcomed. Since this project is licensed under the EUPL (v1.2 only, with specific provisions), your contributions must be under a compatible license. By contributing code or other assets to the project, you confirm that you hold the necessary rights for these contributions.

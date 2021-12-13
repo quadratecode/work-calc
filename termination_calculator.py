@@ -291,7 +291,7 @@ def main():
             output.put_markdown(lang("""
             ### Open Source
             
-            Built with [PyWebIO](https://www.pyweb.io/) and published under the EUPL (v1.2 only) on [GitHub](https://github.com/quadratecode/ch-termination-calculator).
+            Built with [PyWebIO](https://www.pyweb.io/) and published under the EUPL (v1.2 only) on [GitHub](https://github.com/quadratecode/ch-termination-calc).
 
             ### Browser Compatibility
 
@@ -300,7 +300,7 @@ def main():
             ""","""
             ### Open Source
             
-            Erstellt mit [PyWebIO](https://www.pyweb.io/) und veröffentlicht unter der EUPL (nur v1.2) auf [GitHub](https://github.com/quadratecode/ch-termination-calculator).
+            Erstellt mit [PyWebIO](https://www.pyweb.io/) und veröffentlicht unter der EUPL (nur v1.2) auf [GitHub](https://github.com/quadratecode/ch-termination-calc).
 
             ### Browserkompatibilität
 

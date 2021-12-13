@@ -1,7 +1,7 @@
 [project]
-name = ""
-version = ""
-description = ""
+name = "ch-termination-calc"
+version = "1.0.0-beta.1"
+description = "A PyWebIO project to check the temporal validity of your termination and to calculate any possible embargo and notice periods under Swiss law."
 authors = [
     {name = "quadratecode", email = "email@example.com47365835+quadratecode@users.noreply.github.com"},
 ]

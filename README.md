@@ -17,9 +17,9 @@ A web app to check the temporal validity of your termination and to calculate an
 
 ## Planned
 
-- [ ] Certain inputs optional, e.g. only check probation period without incapacity
-- [ ] Temporary Employment
-- [ ] Different incapacities to work (military service or similar, pregnancy or participation in overseas aid projects) and combinations thereof
+- [ ] Make certain inputs optional, e.g. only check probation period without incapacity
+- [ ] Allow user defined inputs
+- [ ] Different incapacities to work (e.g. military service) and combinations thereof
 - [ ] A single incapacity with gaps
 - [ ] Multiple incapacities, with or without gaps
 

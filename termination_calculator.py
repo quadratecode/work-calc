@@ -37,7 +37,7 @@ import logging
 
 # Custom config
 config(title="Employment Termination Calculator | Kündigungsrechner",
-      description="A tool to automatically calculate embargo periods and notice periods according to Swiss law. | Eine Web-App zur automatischen Berechnung von Kündigungs- und Sperrfristen nach Schweizer Recht.",
+      description="Automatically calculate embargo periods, sick pay and notice periods according to Swiss law. | Eine Webapplikation zur automatischen Berechnung von Kündigungs-, Sperr- und Lohnfortzahlungsfristen nach Schweizer Recht.",
       css_style=""" #input-container, #output-container, .pywebio { background:#fafafa } .footer { display: none } .input-container .form-group { margin-bottom: 30px } label { font-weight: 500 } """)
 
 
@@ -277,13 +277,13 @@ def main():
             - Probation Period: [Art. 335b OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b)
             - Regular Termination: [Art. 335c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c)
             - Embargo Period: [Art. 336c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c)
-            - Sick Pay: [Art. Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a)
+            - Sick Pay: [Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a)
             - Federal document on legally mandated holidays: [Link to PDF](https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf)
             ""","""
             - Probezeit: [Art. 335b OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_b)
             - Ordentliche Kündigung: [Art. 335c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_c)
             - Sperrfristen: [Art. 336c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_336_c)
-            - Lohnfortzahlung: [Art. Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a)
+            - Lohnfortzahlung: [Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a)
             - Dokument des Bundes über die gesetzlichen Feiertage: [Link zum PDF](https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf)
             """), lstrip=True)]).style('margin-top: 20px')
 

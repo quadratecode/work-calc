@@ -916,17 +916,17 @@ def main():
 
     with output.use_scope("scope1", clear=True):
         output.put_markdown("""## Input"""), None,
-        output.style(output.put_table([
+        output.put_table([
         [lang("Event", "Ereignis"), lang("Date", "Datum")],
         [lang("Employment Start Date", "Beginn Arbeitsverhältnis"), output_dict["employment_sdt"]],
         [lang("Date of Termination", "Kündigungsdatum"), output_dict["termination_dt"]],
         [lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incapacity_1_lst[0]],
         [lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incapacity_1_lst[1]],
-        ]))
+        ])
 
         output.put_markdown(lang("""## Non-binding Evaluation""", """## Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
         output.put_markdown(lang("""### Embargo and Notice Periods""", """### Kündigungs- und Sperrfristen """)).style('margin-top: 20px'), None,
-        output.style(output.put_table([
+        output.put_table([
         [lang("Query", "Abfrage"), lang("Result", "Ergebnis")],
         [lang("Validity of Termination:", "Gültigkeit der Kündigung:"), output_dict["termination_validity"]],
         [lang("Original end date of employment:", "Ursprüngliches Enddatum der Anstellung:"), notice_period_lst[1]],
@@ -934,15 +934,15 @@ def main():
         [lang("Missed Calendar Days Notice Period:", "Verpasste Kalendertage Kündigungsfrist:"), str(total_notice_overlap) + lang(" days", " Tage")],
         [lang("Total Embargo Duration:", "Gesamtdauer Sperrfrist:"), str(embargo_total_dur) + lang(" days", " Tage")],
         [lang("New End Date of Employment:", "Neues Enddatum der Anstellung:"), output_dict["new_employment_edt"]],
-        ]))
+        ])
 
         output.put_markdown(lang("""### Sick Pay""", """### Lohnfortzahlung """)).style('margin-top: 20px'), None,
-        output.style(output.put_table([
+        output.put_table([
         ["", lang("Start Date", "Anfangsdatum"), lang("End Date", "Enddatum"), lang("Duration", "Dauer")],
         [lang("1. Period:", "1. Periode:"), sick_pay_lst[0], sick_pay_lst[1], str(sick_pay_reset_dur_1) + lang(" days", " Tage")],
         [lang("2. Period:", "2. Periode:"), sick_pay_lst[2], sick_pay_lst[3], str(sick_pay_reset_dur_2) + lang(" days", " Tage")],
         ["Total:", "", "", str(total_sick_pay_dur) + lang(" days", " Tage")]
-        ]))
+        ])
 
         # Plotly output to PyWebIO
         plotly_html = fig.to_html(include_plotlyjs="require", full_html=False, config=config)

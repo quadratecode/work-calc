@@ -922,7 +922,7 @@ def main():
         [lang("Date of Termination", "Kündigungsdatum"), output_dict["termination_dt"]],
         [lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incapacity_1_lst[0]],
         [lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incapacity_1_lst[1]],
-        ]), """font-family: "Recursive", monospace; font-variation-settings: "MONO"1""")
+        ]))
 
         output.put_markdown(lang("""## Non-binding Evaluation""", """## Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
         output.put_markdown(lang("""### Embargo and Notice Periods""", """### Kündigungs- und Sperrfristen """)).style('margin-top: 20px'), None,
@@ -934,15 +934,15 @@ def main():
         [lang("Missed Calendar Days Notice Period:", "Verpasste Kalendertage Kündigungsfrist:"), str(total_notice_overlap) + lang(" days", " Tage")],
         [lang("Total Embargo Duration:", "Gesamtdauer Sperrfrist:"), str(embargo_total_dur) + lang(" days", " Tage")],
         [lang("New End Date of Employment:", "Neues Enddatum der Anstellung:"), output_dict["new_employment_edt"]],
-        ]), """font-family: "Recursive", monospace; font-variation-settings: "MONO"1""")
+        ]))
 
-        output.put_markdown(lang("""### Sick Pay""", """## Lohnfortzahlung """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""### Sick Pay""", """### Lohnfortzahlung """)).style('margin-top: 20px'), None,
         output.style(output.put_table([
         ["", lang("Start Date", "Anfangsdatum"), lang("End Date", "Enddatum"), lang("Duration", "Dauer")],
         [lang("1. Period:", "1. Periode:"), sick_pay_lst[0], sick_pay_lst[1], str(sick_pay_reset_dur_1) + lang(" days", " Tage")],
         [lang("2. Period:", "2. Periode:"), sick_pay_lst[2], sick_pay_lst[3], str(sick_pay_reset_dur_2) + lang(" days", " Tage")],
         ["Total:", "", "", str(total_sick_pay_dur) + lang(" days", " Tage")]
-        ]), """font-family: "Recursive", monospace; font-variation-settings: "MONO"1""")
+        ]))
 
         # Plotly output to PyWebIO
         plotly_html = fig.to_html(include_plotlyjs="require", full_html=False, config=config)

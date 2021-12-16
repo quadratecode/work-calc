@@ -194,14 +194,14 @@ def main():
 
     # --- INPUT --- #
     
-    output.put_markdown(lang("""# Employment Termination Calculator (1.0.0-beta.1)""", """# Kündigungsrechner (1.0.0-beta.1)"""), lstrip=True)
+    output.put_markdown(lang("""# Employment Termination Calculator (1.0.0-beta.1)""", """# Kündigungsrechner (1.0.0-beta.1)"""))
 
     with output.use_scope("scope1"):
         output.put_markdown(lang("""
             Have you been terminated from your employment and were you incapacitated prior, during or after due to illness or accident? Use this web app to check the temporal validity of your termination and to calculate any possible embargo and notice periods under Swiss law.
             ""","""
             Ist Ihnen gekündigt worden und waren Sie davor, währenddessen oder danach arbeitsunfähig aufgrund von Krankheit oder Unfall? Mit dieser Webapplikation können Sie die zeitliche Gültigkeit Ihrer Kündigung gemäss Schweizer Recht überprüfen und allfällige Sperr- und Kündigungsfristen berechnen.
-            """), lstrip=True,).style('margin-top: 20px')
+            """)).style('margin-top: 20px')
 
         output.put_markdown(lang("""
             ----
@@ -213,7 +213,7 @@ def main():
             **Diese Webapplikation befindet sich derzeit in der Betaphase. Bitte senden Sie mir [eine Nachricht](mailto:rm@llq.ch) mit Ihren Fallangaben und der Auswertung, sollten Sie vermuten, dass die Resultate inkorrekt sind.**
             
             **Bitte beachten Sie, dass noch nicht alle möglichen Fallkombinationen implementiert sind – Näheres können Sie den nachfolgenden Informationen entnehmen.**
-            """), lstrip=True)
+            """))
 
         output.put_collapse(lang("Further Information", "Ergänzende Informationen"), [
             output.put_markdown(lang("""
@@ -270,43 +270,49 @@ def main():
             - Die gleiche Arbeitsunfähigkeit mit Unterbrüchen
             - Mehrere Arbeitsunfähigkeiten, zusammenhängend oder mit Unterbrüchen
             - Vertragliche Vereinbarungen, die von den möglichen Eingaben abweichen, bspw. abweichende Kündigungsfristen bei einer Kündigung in der Probezeit.
-            """), lstrip=True)]).style('margin-top: 20px')
+            """))]).style('margin-top: 20px')
         
         output.put_collapse(lang("Legal Framework", "Rechtliche Grundlagen",), [
-            output.put_markdown(lang("""
-            - Probation Period: [Art. 335b OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b)
-            - Regular Termination: [Art. 335c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c)
-            - Embargo Period: [Art. 336c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c)
-            - Sick Pay: [Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a)
-            - Federal document on legally mandated holidays: [Link to PDF](https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf)
-            ""","""
-            - Probezeit: [Art. 335b OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_b)
-            - Ordentliche Kündigung: [Art. 335c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_c)
-            - Sperrfristen: [Art. 336c OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_336_c)
-            - Lohnfortzahlung: [Art. 324a OR](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a)
-            - Dokument des Bundes über die gesetzlichen Feiertage: [Link zum PDF](https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf)
-            """), lstrip=True)]).style('margin-top: 20px')
+            output.put_html(lang("""
+                <ul>
+                    <li> Probation Period: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b">Art. 335b OR</a> </li>
+                    <li> Regular Termination: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c">Art. 335c OR</a> </li>
+                    <li> Embargo Period: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c">Art. 336c OR</a> </li>
+                    <li> Sick Pay: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a">Art. 324a OR</a> </li>
+                    <li> Federal document on legally mandated holidays: <a target="_parent" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
+                </ul>
+            """,
+            """
+                 <ul>
+                    <li> Probezeit: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_b">Art. 335b OR</a> </li>
+                    <li> Ordentliche Kündigung: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_c">Art. 335c OR</a> </li>
+                    <li> Sperrfristen: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_336_c">Art. 336c OR</a> </li>
+                    <li> Lohnfortzahlung: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a">Art. 324a OR</a> </li>
+                    <li> Dokument des Bundes über die gesetzlichen Feiertage: <a target="_parent" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
+                </ul>
+            """)
+            , sanitize=True
+            )]).style('margin-top: 20px')
 
         output.put_collapse((lang("Technical Information", "Technisches")), [
             output.put_markdown(lang("""
-            ### Open Source
             
-            Built with [PyWebIO](https://www.pyweb.io/) and published under the EUPL (v1.2 only) on [GitHub](https://github.com/quadratecode/ch-termination-calc).
-
-            ### Browser Compatibility
-
             Only optimized for modern browsers and screens above 1080p in width.
 
+            Built with PyWebIO[1] and published under the EUPL (v1.2 only) on GitHub[2].
+
             ""","""
-            ### Open Source
             
-            Erstellt mit [PyWebIO](https://www.pyweb.io/) und veröffentlicht unter der EUPL (nur v1.2) auf [GitHub](https://github.com/quadratecode/ch-termination-calc).
-
-            ### Browserkompatibilität
-
             Nur für moderne Browser und Bildschirme mit einer Breite von über 1080p optimiert.
 
-            """), lstrip=True)]).style('margin-top: 20px')
+            Erstellt mit PyWebIO[1] und veröffentlicht unter der EUPL (nur v1.2) auf GitHub[2].
+            """)),
+            output.put_html("""
+                <a target="_parent" href="https://www.pyweb.io/">[1] PyWebIO</a> <br>
+                <a target="_parent" href="https://github.com/quadratecode/ch-termination-calc">[2] GitHub Repository</a>
+            """, sanitize=True
+            )
+            ]).style('margin-top: 20px')
 
         output.style(output.put_markdown(lang("""
             ## Terms and Conditions
@@ -316,7 +322,7 @@ def main():
             ## Nutzungsbedingungen
 
             **Diese Webanwendung wird im Ist-Zustand zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr. Jegliche Sachgewährleistung und jegliche Haftung, inkl. der Haftung für technische Mängel, ist im gesetzlich zulässigen Umfang ausgeschlossen. Ihre Resultate sollten Sie stets von Hand nachprüfen. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.**
-            """), lstrip=True), "color:crimson")
+            """)), "color:crimson")
     
     terms = input.checkbox(options=[lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")], validate=check_tc)
 
@@ -956,7 +962,7 @@ def main():
 
         WICHTIG: Die nachfolgende Grafik ist nur als visuelle Hilfe gedacht. Ihre Ergebnisse entnehmen Sie bitte der Tabelle hiervor.
 
-        """), lstrip=True).style('margin-top: 20px'), None,
+        """)).style('margin-top: 20px'), None,
         output.put_collapse(lang("Further Information", "Ergänzende Hinweise",), [
             output.put_markdown(lang("""
 
@@ -969,7 +975,7 @@ def main():
             - Ein Export als PNG ist über das Steuerpanel rechts oben möglich.
             - Derzeit ist es nicht möglich, einzelne Tage zu visualisieren. Das bedeutet beispielsweise, dass die Verlängerung der Kündigungsfrist um einen einzelnen Tag nicht angezeigt wird.
 
-            """), lstrip=True)]).style('margin-top: 20px'), None,
+            """))]).style('margin-top: 20px'), None,
         output.put_html(plotly_html).style("border: 1px solid #dfe2e5")
 
 

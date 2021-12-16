@@ -180,8 +180,6 @@ def clamp(n, minn, maxn):
         return n
 
 
-
-
 # --- MAIN FNCTION --- #
 
 def main():
@@ -275,24 +273,22 @@ def main():
         output.put_collapse(lang("Legal Framework", "Rechtliche Grundlagen",), [
             output.put_html(lang("""
                 <ul>
-                    <li> Probation Period: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b">Art. 335b OR</a> </li>
-                    <li> Regular Termination: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c">Art. 335c OR</a> </li>
-                    <li> Embargo Period: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c">Art. 336c OR</a> </li>
-                    <li> Sick Pay: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a">Art. 324a OR</a> </li>
-                    <li> Federal document on legally mandated holidays: <a target="_parent" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
+                    <li> Probation Period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b">Art. 335b OR</a> </li>
+                    <li> Regular Termination: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c">Art. 335c OR</a> </li>
+                    <li> Embargo Period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c">Art. 336c OR</a> </li>
+                    <li> Sick Pay: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a">Art. 324a OR</a> </li>
+                    <li> Federal document on legally mandated holidays: <a target="_blank" rel="noopener noreferrer" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
                 </ul>
             """,
             """
                  <ul>
-                    <li> Probezeit: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_b">Art. 335b OR</a> </li>
-                    <li> Ordentliche Kündigung: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_c">Art. 335c OR</a> </li>
-                    <li> Sperrfristen: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_336_c">Art. 336c OR</a> </li>
-                    <li> Lohnfortzahlung: <a target="_parent" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a">Art. 324a OR</a> </li>
-                    <li> Dokument des Bundes über die gesetzlichen Feiertage: <a target="_parent" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
+                    <li> Probezeit: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_b">Art. 335b OR</a> </li>
+                    <li> Ordentliche Kündigung: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_335_c">Art. 335c OR</a> </li>
+                    <li> Sperrfristen: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_336_c">Art. 336c OR</a> </li>
+                    <li> Lohnfortzahlung: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/de#art_324_a">Art. 324a OR</a> </li>
+                    <li> Dokument des Bundes über die gesetzlichen Feiertage: <a target="_blank" rel="noopener noreferrer" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
                 </ul>
-            """)
-            , sanitize=True
-            )]).style('margin-top: 20px')
+            """))]).style('margin-top: 20px')
 
         output.put_collapse((lang("Technical Information", "Technisches")), [
             output.put_markdown(lang("""
@@ -308,11 +304,9 @@ def main():
             Erstellt mit PyWebIO[1] und veröffentlicht unter der EUPL (nur v1.2) auf GitHub[2].
             """)),
             output.put_html("""
-                <a target="_parent" href="https://www.pyweb.io/">[1] PyWebIO</a> <br>
-                <a target="_parent" href="https://github.com/quadratecode/ch-termination-calc">[2] GitHub Repository</a>
-            """, sanitize=True
-            )
-            ]).style('margin-top: 20px')
+                <a target="_blank" href="https://www.pyweb.io/">[1] PyWebIO</a> <br>
+                <a target="_blank" href="https://github.com/quadratecode/ch-termination-calc">[2] GitHub Repository</a>
+            """)]).style('margin-top: 20px')
 
         output.style(output.put_markdown(lang("""
             ## Terms and Conditions
@@ -779,6 +773,7 @@ def main():
         new_employment_edt = ""
     else:
         pass
+
 
     # --- DATE CONVERSION AND OUTPUT PREPARATION --- #
 

@@ -543,6 +543,7 @@ def main():
     # Calculate new employment end date
     new_employment_edt = notice_period_lst[-1]
 
+
     # --- INCAPACITY AND EMBARGO PERIOD --- #
 
     # Conditions necessitating an embargo period
@@ -913,7 +914,7 @@ def main():
                 lst[index] = value.strftime("%d.%m.%Y")
 
     # Increase max width for visualization
-    session.set_env(output_max_width="1080x")
+    session.set_env(output_max_width="1080px")
 
     with output.use_scope("scope1", clear=True):
         output.put_markdown("""## Input"""), None,

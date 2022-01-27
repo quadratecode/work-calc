@@ -38,7 +38,34 @@ import logging
 # Custom config
 config(title="Employment Termination Calculator | Kündigungsrechner",
       description="Automatically calculate embargo periods, sick pay and notice periods according to Swiss law. | Eine Webapplikation zur automatischen Berechnung von Kündigungs-, Sperr- und Lohnfortzahlungsfristen nach Schweizer Recht.",
-      css_style=""" #input-container, #output-container, .pywebio { background:#fafafa } .footer { display: none } .input-container .form-group { margin-bottom: 30px } label { font-weight: 500 } """)
+      css_style="""
+        #input-container,
+        #output-container,
+        .pywebio {
+            background:#fafafa
+        }
+        
+        .footer {
+            display: none
+        }
+        
+        .input-container,
+        .form-group {
+            margin-bottom: 30px
+        }
+        
+        label {
+        font-weight: 500
+        }
+
+        input::-webkit-calendar-picker-indicator {
+            display: none;
+        }
+
+        input[type="date"]::-webkit-input-placeholder { 
+            visibility: hidden !important;
+        }
+        """)
 
 
 # --- FUNCTIONS --- #
@@ -55,10 +82,11 @@ def check_form(data):
     if data.get("employment_sdt") > data.get("termination_dt"):
         return ("termination_dt", lang("ERROR: The date of termination of your employment cannot be older than its beginning.", "ERROR: Das Kündigungsdatum kann nicht vor dem Startdatum liegen."))
     if data.get("incapacity_1_sdt") > data.get("incapacity_1_edt"):
-        return ('incapacity_1_edt', lang("ERROR: The end of your incapacity cannot be older than its beginning.", "ERROR: Das Enddatum der Arbeitsfähigkeit kann nicht vor ihrem Startdatum liegen."))
+        return ("incapacity_1_edt", lang("ERROR: The end of your incapacity cannot be older than its beginning.", "ERROR: Das Enddatum der Arbeitsfähigkeit kann nicht vor ihrem Startdatum liegen."))
     if len(data.get("workdays")) < 5:
         return ("workdays", lang("ERROR: This calculator only supports 100% workload. Please choose 5 days or more.", "ERROR: Dieser Rechner kann nur Vollzeitarbeit evaluieren. Bitte wählen Sie mind. 5 Tage."))
     
+
 # Funtion to validate checkbox
 def check_tc(terms):
     if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in terms:
@@ -368,10 +396,12 @@ def main():
                 "An welchem Datum hat Ihre Arbeitsunfähigkeit begonnen?"),
                 name="incapacity_1_sdt",
                 type=input.DATE,
-                required=True),
+                required=False),
         # End of incapacity
         input.input(lang("When did your incapacity for work end?", "An welchem Datum hat Ihre Arbeitsunfähigkeit geendet?"),
-            name="incapacity_1_edt", type=input.DATE, required=True),
+            name="incapacity_1_edt",
+            type=input.DATE,
+            required=False),
         # Duration of notice period
         input.select(
             lang(
@@ -432,9 +462,12 @@ def main():
     workplace = data.get("workplace") # Place of work
 
     # Initiatie lists, structure: unequal indicies indicate start dates, equal ones end dates (starts from index 0)
+    try:
+        incapacity_1_lst = [arrow.get(data.get("incapacity_1_sdt")), arrow.get(data.get("incapacity_1_edt"))]
+    except arrow.parser.ParserError:
+        incapacity_1_lst = []
     reg_employment_lst = [employment_sdt, termination_dt]
-    prob_period_lst = [arrow.get(data.get("employment_sdt"))]
-    incapacity_1_lst = [arrow.get(data.get("incapacity_1_sdt")), arrow.get(data.get("incapacity_1_edt"))]
+    prob_period_lst = [employment_sdt]
     embargo_1_lst = []
     gap_1_lst = []
     notice_period_lst = []
@@ -635,7 +668,7 @@ def main():
     # Source: https://www.gerichte-zh.ch/themen/arbeit/waehrend-arbeitsverhaeltnis/arbeitsverhinderung/krankheit-und-unfall.html
     pay_matrix = [
         ["", 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42], # ZH (weeks)
-        ["", 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BS (months)
+        ["", 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BS / BL (months)
         ["", 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BE (months)
     ]
 

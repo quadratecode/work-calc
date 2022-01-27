@@ -57,14 +57,6 @@ config(title="Employment Termination Calculator | Kündigungsrechner",
         label {
         font-weight: 500
         }
-
-        input::-webkit-calendar-picker-indicator {
-            display: none;
-        }
-
-        input[type="date"]::-webkit-input-placeholder { 
-            visibility: hidden !important;
-        }
         """)
 
 

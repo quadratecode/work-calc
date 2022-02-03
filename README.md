@@ -1,6 +1,6 @@
 # About
 
-A web app to check the temporal validity of your termination and to calculate any possible embargo, notice and sick pay periods under Swiss law. Built with Python and [PyWebIO](https://github.com/pywebio/PyWebIO). Hosted [here](https://www.llq.ch/tools/termination-calc). Currently undergoing beta testing.
+A web app to check the temporal validity of your termination and to calculate any possible embargo, notice and sick pay periods under Swiss law. Built with Python and [PyWebIO](https://github.com/pywebio/PyWebIO). Hosted [here](https://www.obiter.ch/tools/termination-calc/). Currently undergoing beta testing.
 
 # Features
 

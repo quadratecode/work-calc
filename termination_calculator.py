@@ -37,27 +37,7 @@ import logging
 
 # Custom config
 config(title="Employment Termination Calculator | Kündigungsrechner",
-      description="Automatically calculate embargo periods, sick pay and notice periods according to Swiss law. | Eine Webapplikation zur automatischen Berechnung von Kündigungs-, Sperr- und Lohnfortzahlungsfristen nach Schweizer Recht.",
-      css_style="""
-        #input-container,
-        #output-container,
-        .pywebio {
-            background:#fafafa
-        }
-        
-        .footer {
-            display: none
-        }
-        
-        .input-container,
-        .form-group {
-            margin-bottom: 30px
-        }
-        
-        label {
-        font-weight: 500
-        }
-        """)
+      description="Automatically calculate embargo periods, sick pay and notice periods according to Swiss law. | Eine Webapplikation zur automatischen Berechnung von Kündigungs-, Sperr- und Lohnfortzahlungsfristen nach Schweizer Recht.")
 
 
 # --- FUNCTIONS --- #

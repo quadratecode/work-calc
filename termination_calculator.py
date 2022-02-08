@@ -57,7 +57,15 @@ def check_form(data):
         return ("incapacity_1_edt", lang("ERROR: The end of your incapacity cannot be older than its beginning.", "ERROR: Das Enddatum der Arbeitsfähigkeit kann nicht vor ihrem Startdatum liegen."))
     if len(data.get("workdays")) < 5:
         return ("workdays", lang("ERROR: This calculator only supports 100% workload. Please choose 5 days or more.", "ERROR: Dieser Rechner kann nur Vollzeitarbeit evaluieren. Bitte wählen Sie mind. 5 Tage."))
-    
+
+# Function to correct date subtraction if origin month has more days than target month
+# See issue 1
+def subtract_corr(sdt, edt):
+    if sdt.day != edt.day:
+        return(edt)
+    else:
+        edt = edt.shift(days=-1)
+        return(edt)
 
 # Funtion to validate checkbox
 def check_tc(terms):
@@ -434,10 +442,7 @@ def main():
     workplace = data.get("workplace") # Place of work
 
     # Initiatie lists, structure: unequal indicies indicate start dates, equal ones end dates (starts from index 0)
-    try:
-        incapacity_1_lst = [arrow.get(data.get("incapacity_1_sdt")), arrow.get(data.get("incapacity_1_edt"))]
-    except arrow.parser.ParserError:
-        incapacity_1_lst = []
+    incapacity_1_lst = [arrow.get(data.get("incapacity_1_sdt")), arrow.get(data.get("incapacity_1_edt"))]
     reg_employment_lst = [employment_sdt, termination_dt]
     prob_period_lst = [employment_sdt]
     embargo_1_lst = []
@@ -473,7 +478,9 @@ def main():
 
     try:
         # Calculate probation period end date
-        prob_period_lst.insert(1, min(prob_period_lst[0].shift(months=+prob_period_dur, days=-1), termination_dt)) # BGer 4C.45/2004
+        prob_period_lst.insert(1, min(prob_period_lst[0].shift(months=+prob_period_dur), termination_dt)) # BGer 4C.45/2004
+        print(prob_period_lst[1])
+        prob_period_lst[1] = subtract_corr(prob_period_lst[0], prob_period_lst[1])
         
         # Gather future holidays for 2 years
         for day in arrow.Arrow.range("days", prob_period_lst[0], limit=730):
@@ -481,6 +488,7 @@ def main():
                 holidays.append(day)
 
         # Extend probation period if incapacity occured during original probation period
+        print(prob_period_lst[1], incapacity_1_lst[0] )
         if prob_period_lst[1] > incapacity_1_lst[0]:
             
             # Gather working days during probation period

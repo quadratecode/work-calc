@@ -479,7 +479,6 @@ def main():
     try:
         # Calculate probation period end date
         prob_period_lst.insert(1, min(prob_period_lst[0].shift(months=+prob_period_dur), termination_dt)) # BGer 4C.45/2004
-        print(prob_period_lst[1])
         prob_period_lst[1] = subtract_corr(prob_period_lst[0], prob_period_lst[1])
         
         # Gather future holidays for 2 years
@@ -488,7 +487,6 @@ def main():
                 holidays.append(day)
 
         # Extend probation period if incapacity occured during original probation period
-        print(prob_period_lst[1], incapacity_1_lst[0] )
         if prob_period_lst[1] > incapacity_1_lst[0]:
             
             # Gather working days during probation period

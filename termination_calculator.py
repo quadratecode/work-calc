@@ -200,84 +200,53 @@ def main():
 
     # --- INPUT --- #
     
-    output.put_markdown(lang("""# Employment Termination Calculator (1.0.0-beta.1)""", """# Kündigungsrechner (1.0.0-beta.1)"""))
+    output.put_markdown(lang("""# Work Incapacity Calculator""", """# Rechner Arbeitsunfähigkeit"""))
 
+    # Landing Page Scope (Info)
     with output.use_scope("scope1"):
         output.put_markdown(lang("""
-            Have you been terminated from your employment and were you incapacitated prior, during or after due to illness or accident? Use this web app to check the temporal validity of your termination and to calculate any possible embargo and notice periods under Swiss law.
+            Were you incapacitated to work due to illness, accident, military service or pregnancy?
+            Use this app to evaluate:
+            - Trial period extensions
+            - Notice periods
+            - Embargo periods
+            - Sick pay claim
+            - Validity of termination
+
+            Give it a try!
             ""","""
-            Ist Ihnen gekündigt worden und waren Sie davor, währenddessen oder danach arbeitsunfähig aufgrund von Krankheit oder Unfall? Mit dieser Webapplikation können Sie die zeitliche Gültigkeit Ihrer Kündigung gemäss Schweizer Recht überprüfen und allfällige Sperr- und Kündigungsfristen berechnen.
+            Waren Sie wegen Krankheit, Unfall, Militärdienst oder Schwangerschaft arbeitsunfähig?
+            Nutzen Sie diese App um Ihren Fall auszuwerten:
+            - Verlängerung der Probezeit
+            - Kündigungsfristen
+            - Sperrfristen
+            - Ansprucha uf Lohnfortzahlung
+            - Gültigkeit einer Kündigung
+
+            Probieren Sie es aus!
             """)).style('margin-top: 20px')
 
         output.put_markdown(lang("""
             ----
-            **This web app is currently undergoing beta testing. Please send me [a message](mailto:rm@llq.ch) with your input data and a screenshot of your results if you suspect them to be incorrect.**
+            **This app is currently undergoing beta testing. Any [Feedback](mailto:rm@llq.ch) is appreciated.**
             
-            **Please note that not all possible case combinations have been implemented yet – check below for further information.**
+            The following case combinations **cannot** be evaluated:
+            - Temporary employment
+            - The combination of different kinds of incapacities (e.g. military service and sickness)
+            - More than three separate incapacities due to illness or accidents
+            - Contractual agreements that differ from the possible inputs
             ""","""
             ----
-            **Diese Webapplikation befindet sich derzeit in der Betaphase. Bitte senden Sie mir [eine Nachricht](mailto:rm@llq.ch) mit Ihren Fallangaben und der Auswertung, sollten Sie vermuten, dass die Resultate inkorrekt sind.**
+            **Diese App befindet sich derzeit im Betatest. [Feedback](mailto:rm@llq.ch) ist sehr wilkommen.**
             
-            **Bitte beachten Sie, dass noch nicht alle möglichen Fallkombinationen implementiert sind – Näheres können Sie den nachfolgenden Informationen entnehmen.**
+            Die folgenden Fallkonstellationen können nicht ausgewertet werden:
+            - Befristete Arbeitsverhältnisse
+            - Die Kombination von verschiedenartigen Arbeitsunfähigkeiten (bspw. Militärdienst und Krankheit)
+            - Mehr als drei getrennte Arbeitsunfähigkeiten zufolge Unfall oder Krankheit
+            - Vertragliche Vereinbarungen, die von den möglichen Eingaben abweichen
+
             """))
 
-        output.put_collapse(lang("Further Information", "Ergänzende Informationen"), [
-            output.put_markdown(lang("""
-            ### About this App
-
-            This app evaluates:
-
-            - Permanent full-time employment (100 %)
-            - Incapacities due to illness or accident
-            - The probation period duration incl. a possible extension considering legally mandated holidays
-            - The validity of a termination with regards to the embargo period
-            - The embargo period duration
-            - The notice period duration incl. a possible extension
-            - Leap years are respected
-            - Changes in seniority during an incapacity are respected
-            
-            Results are visualized on an interactive timeline.
-
-            ### Case Combinations
-            
-            This app is able to evaluate cases with a single, connected incapacity.
-
-            **Not possible** is currently the evaluation of the following case combinations:
-            
-            - Temporary or part-time employment
-            - Incapacity due to compulsory military service or similar, pregnancy or participation in overseas aid projects
-            - A single incapacity with gaps
-            - Multiple incapacities, with or without gaps
-            - Contractual agreements that differ from the possible inputs, e.g. different notice periods for a termination during the probation period
-            ""","""
-            ### Über diese App
-
-            Diese App evaluiert:
-
-            - Unbefristete Arbeitsverhältnisse in Vollzeit (100 %)
-            - Arbeitsunfähigkeiten zufolge Krankheit oder Unfall
-            - Die Dauer der Probezeit inkl. allfälliger Verlängerung unter Berücksichtigung gesetzlicher Feiertage 
-            - Die Gültigkeit der Kündigung im Zusammenhang mit der Sperrfrist
-            - Die Dauer der Sperrfrist
-            - Die Kündigungsfrist inkl. allfälliger Verlängerung
-            - Schaltjahre werden berücksichtigt
-            - Wechsel im Dienstalter während einer Arbeitsunfähigkeit werden berücksichtigt
-            
-            Die Resultate werden auf einem interaktiven Zeitstrahl visualisiert.
-
-            ### Fallkombinationen
-            
-            Diese App kann Fallkonstellationen evaluieren, bei denen eine einzelne, zusammenhängende Arbeitsunfähigkeit vorliegt.
-
-            **Nicht erfasst** sind derzeit folgende Fallkonstellationen:
-            
-            - Befristete Arbeitsverhältnisse oder Teilzeit
-            - Arbeitsunfähigkeit zufolge obligatorischen Militär- oder Schutzdienstes, Schwangerschaft oder Teilnahme an einer Dienstleistung für eine Hilfsaktion im Ausland
-            - Die gleiche Arbeitsunfähigkeit mit Unterbrüchen
-            - Mehrere Arbeitsunfähigkeiten, zusammenhängend oder mit Unterbrüchen
-            - Vertragliche Vereinbarungen, die von den möglichen Eingaben abweichen, bspw. abweichende Kündigungsfristen bei einer Kündigung in der Probezeit.
-            """))]).style('margin-top: 20px')
-        
         output.put_collapse(lang("Legal Framework", "Rechtliche Grundlagen",), [
             output.put_html(lang("""
                 <ul>
@@ -301,13 +270,13 @@ def main():
         output.put_collapse((lang("Technical Information", "Technisches")), [
             output.put_markdown(lang("""
             
-            Only optimized for modern browsers and screens above 1080p in width.
+            Only optimized for modern browsers and screens above 1080p in width. The language (DE/EN) is set according to the language in your browser.
 
             Built with PyWebIO[1] and published under the EUPL (v1.2 only) on GitHub[2].
 
             ""","""
             
-            Nur für moderne Browser und Bildschirme mit einer Breite von über 1080p optimiert.
+            Nur für moderne Browser und Bildschirme mit einer Breite von über 1080p optimiert. Die Sprache (DE/EN) richtet sich nach den Einstellungen Ihres Browsers.
 
             Erstellt mit PyWebIO[1] und veröffentlicht unter der EUPL (nur v1.2) auf GitHub[2].
             """)),
@@ -316,51 +285,464 @@ def main():
                 <a target="_blank" href="https://github.com/quadratecode/ch-termination-calc">[2] GitHub Repository</a>
             """)]).style('margin-top: 20px')
 
-        output.style(output.put_markdown(lang("""
-            ## Terms and Conditions
+        output.put_markdown(lang("""
+            ### Terms and Conditions
 
-            **This web application is provided "as is". Use at your own risk. Warranties or liabilities of any kind, including for technical defects, are excluded to the extent permitted by applicable law. Always double check your results manually and do not rely solely on the automatically generated evaluation.**
+            This app is provided "as is". Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
             ""","""
-            ## Nutzungsbedingungen
+            ### Nutzungsbedingungen
 
-            **Diese Webanwendung wird im Ist-Zustand zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr. Jegliche Sachgewährleistung und jegliche Haftung, inkl. der Haftung für technische Mängel, ist im gesetzlich zulässigen Umfang ausgeschlossen. Ihre Resultate sollten Sie stets von Hand nachprüfen. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.**
-            """)), "color:crimson")
+            Diese App wird im Ist-Zustand zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr und unter Ausschluss jeglicher Haftung, soweit gesetzlich zulässig. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.
+            """))
     
-    terms = input.checkbox(options=[lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")], validate=check_tc)
+    # Terms and conditions
+    input.checkbox(
+        options=[
+            lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")],
+        validate=check_tc)
 
+    # Employment scope
     with output.use_scope("scope1", clear=True):
-        output.put_markdown("""""") # empty scope1
+        output.put_markdown(lang("""
+            ### Employment
 
-    data = input.input_group(lang("Your Input", "Ihr Input"), [
-        # Employment start date
+            Please enter the date of the first day of work and the place of work.
+
+            Hints:
+            - The first day of work can be different from the starting date of the employment contract.
+            ""","""
+            ### Arbeitsverhältnis
+
+            Bitte tragen Sie das Datum des Stellenantritts und den Arbeitsort ein.
+
+            Hinweise:
+            - Der Tag des Stellenantritts kann vom Anfangsdatum des Arbeitsvertrags abweichen.
+            """))
+
+    # Input: Employment start date and place of work
+    employment_data = input.input_group("", [
         input.input(
             lang(
-                "On which date was your first day on the job?",
-                "An welchem Datum haben Sie Ihre Stelle angetreten?"),
+                "First day of work",
+                "Tag des Stellenatritts"),
             name="employment_sdt",
             type=input.DATE,
             required=True),
-        # Working Days
-        input.checkbox(
-                lang("Which weekdays do you work on?", "An welchen Wochentagen arbeiten Sie?"),
-                ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
-                name="workdays",
-                required=True),
-        # probation period
         input.select(
-            lang(
-                "What is the duration of the probation period according to your employment contract (in months)?",
-                "Wie lange dauert die Probezeit gemäss Ihrem Arbeitsvertrag (in Monaten)?"),
-                [lang(
-                    "No mention of probation period",
-                    "Keine Angaben zur Probezeit"),
-                    "1", "2", "3",
+            lang("Place of work (canton)", "Arbeitsort (Kanton)"),
+            ["AG", "AI", "AR", "BS", "BL", "BE", "FR", "GE", "GL", "GR", "JU", "LU", "NE", "NW",
+            "OW", "SH", "SZ", "SO", "SG", "TG", "TI", "UR", "VS", "VD", "ZG", "ZH"],
+            name="workplace",
+            type=input.TEXT,
+            required=True),
+    ])
+
+    # Scope case combination
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Case Combination
+
+            Please select any case options you would like to evaluate.
+
+            Hints:
+            - The evaluation of the trial period is advisable, when any incapacity to work occured during the trial period.
+            - The evaluation of a termination is advisable, when a termination has already been issued.
+            ""","""
+            ### Fallkonstellation
+
+            Bitte wählen Sie Ihre Fallkonstellation aus.
+
+            Hinweise:
+            - Die Auswertung der Probezeit ist insb. dann sinnvoll, wenn eine Arbeitsunfähigkeit während der Probezeit aufgetreten ist.
+            - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
+            """))
+
+    # Input: Case combination
+    case = input.input_group("", [
+        input.select(lang("Which type of incapacity would you like to evaluate?", "Welche Art von Arbeitsunfähigkeit möchten Sie auswerten?"),
+            options=[{
+                "label":lang("accident or illness","Unfall oder Krankheit"),
+                "value":"illacc",
+                },{
+                "label":lang("military or civil service", "Militär, Schutz- oder Zivildienst"),
+                "value":"milservice"
+                },{
+                "label":lang("pregnancy", "Schwangerschaft"),
+                "value":"preg"}],
+            name="incapacity_type",
+            inline=True,
+            required=True),
+        input.select(lang("Evaluation of tiral period?", "Auswertung der Probezeit?"),
+            [lang("Yes", "Ja"), lang("No", "Nein"), lang("I don't know", "Ich weiss nicht")],
+            name="trial_relevance",
+            required=True),
+        input.select(lang("Evaluation of termination?", "Auswertung einer Kündigung?"),
+            [lang("Yes", "Ja"), lang("No", "Nein")],
+            name="termination_occurence",
+            required=True),
+    ])
+
+    # Scope trial period
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Trial Period
+
+            Please specify on which weekdays the 
+
+            Hints:
+            - The evaluation of the trial period is advisable, when any incapacity to work occured during the trial period.
+            - The evaluation of a termination is advisable, when a termination has already been issued.
+            ""","""
+            ### Angaben Probezeit
+
+            Bitte wählen Sie Ihre Fallkonstellation aus.
+
+            Hinweise:
+            - Die Auswertung der Probezeit ist insb. dann sinnvoll, wenn eine Arbeitsunfähigkeit während der Probezeit aufgetreten ist.
+            - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
+            """))
+
+    if case.get("trial_relevance") != "No" or "Nein":
+        trial_period_data = input.input_group("", [
+            input.checkbox(
+                    lang("Which weekdays do you work on?", "An welchen Wochentagen arbeiten Sie?"),
+                    ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
+                    name="workdays",
+                    required=True),
+            # probation period
+            input.select(
                 lang(
-                    "No probation period",
-                    "Keine Probezeit")],
-                name="prob_period_input",
-                type=input.TEXT,
+                    "Duration of probation period (months)?",
+                    "Dauer Probezeit (Monate)?"),
+                    [lang(
+                        "No mention of probation period",
+                        "Keine Angaben zur Probezeit"),
+                        "1", "2", "3",
+                    lang(
+                        "No probation period",
+                        "Keine Probezeit")],
+                    name="prob_period_input",
+                    type=input.TEXT,
+                    required=True),
+            input.select(
+                lang(
+                    "Duration of probation period (months)?",
+                    "Dauer Probezeit (Monate)?"),
+                    [lang(
+                        "No mention of probation period",
+                        "Keine Angaben zur Probezeit"),
+                        "1", "2", "3",
+                    lang(
+                        "No probation period",
+                        "Keine Probezeit")],
+                    name="prob_period_input",
+                    type=input.TEXT,
+                    required=True),
+        ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Case Combination
+
+            You have chosen the evaluation of an incapacity to work due to illness(es) or accident(s). Please specify how many **seperate** illnesses or accidents you would like to evaluate.
+
+            Hints:
+            - Incapacities to work counts a **seperate**, when there is **no connection** between them. Example: There is no connection between having the flu and a car accident – these would count as seperate.
+            - Incapacities to work count **not as seperate**, when there is **any connection** between them. For example: A prolonged cancer treatment with multiple periods of absence would count as a single incapacity.
+            - Breaks between single incapacities (e.g. cancer) can be specified in the next step.
+            ""","""
+            ### Fallkonstellation
+
+            Sie haben die Auswertung einer Arbeitsunfähigkeit zufolge Krankheit oder Unfall ausgewählt. Bitte geben Sie an, wie viele **getrennte** Krankheiten oder Unfälle Sie auswerten möchten.
+
+            Hinweise:
+            - Arbeitsunfähigkeiten gelten als **getrennt**, wenn zwischen ihnen **keinerlei Verbindung** besteht. Beispiel: Es besteht keine Verbindung zwischen einer Grippeerkrankung und einem Autounfall.
+            - Arbeitsunfähigkeiten gelten **nicht als getrennt**, wenn zwischen ihnen eine **irgendwie geartete Verbindung** besteht. Beispiel: Eine langandauernde Krebstherapie mit vielzähligen Abwesenheiten zählt als einzelne Arbeitsunfähigkeit.
+            - Unterbrüche zwischen einer einzelnen Arbeitsunfähigkeit können im nächsten Schritt angegeben werden.
+            """))
+
+    if case.get("incapacity_type") == "illacc":
+        illacc_amount = input.select(lang("Amount of seperate illnesses or accidents", "Anzahl getrennter Unfälle oder Krankheiten"),
+            options=[{
+                "label":lang("One single accident or illness", "Einzelner Unfall oder Krankheit"),
+                "value":1
+                },{
+                "label":lang("Two or more accidents or illnesses", "Zwei oder mehr Unfälle oder Krankheiten"),
+                "value":2
+                },{
+                "label":lang("Three seperate accidents or illnesses", "Drei getrennte Unfälle oder Krankheiten"),
+                "value":3}
+            ],
+            required=True)
+    else:
+        illacc_amount = 0
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### First Incapacity - Breaks
+
+            Please specify, 
+
+            Hints:
+            - 
+            ""","""
+            ### Erste Arbeitsunfähigkeit - Unterbrüche
+
+            Sie 
+
+            Hinweise:
+            -
+            """))
+
+    if illacc_amount in [1, 2, 3]:
+        first_illacc_data = input.input_group("", [
+            input.input(
+                lang(
+                    "Start date of first period",
+                    "Anfangsdatum der ersten Periode"),
+                name="illacc_1_sdt_1",
+                type=input.DATE,
                 required=True),
+            input.input(
+                lang(
+                    "End date of first period",
+                    "Enddatum der ersten Periode"),
+                name="illacc_1_edt_1",
+                type=input.DATE,
+                required=True),
+            input.input(
+                lang(
+                    "Start date of second period",
+                    "Anfangsdatum der zweiten Periode"),
+                name="illacc_1_sdt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of second period",
+                    "Enddatum der zweiten Periode"),
+                name="illacc_1_edt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "Start date of third period",
+                    "Anfangsdatum der dritten Periode"),
+                name="illacc_1_sdt_3",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of third period",
+                    "Enddatum der dritten Periode"),
+                name="illacc_1_edt_3",
+                type=input.DATE),
+            ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Second Incapacity - Breaks
+
+            Please specify, 
+
+            Hints:
+            - 
+            ""","""
+            ### Zweite Arbeitsunfähigkeit - Unterbrüche
+
+            Sie 
+
+            Hinweise:
+            -
+            """))
+
+    if illacc_amount in [2, 3]:
+        second_illacc_data = input.input_group("", [
+            input.input(
+                lang(
+                    "Start date of first period",
+                    "Anfangsdatum der ersten Periode"),
+                name="illacc_2_sdt_1",
+                type=input.DATE,
+                required=True),
+            input.input(
+                lang(
+                    "End date of first period",
+                    "Enddatum der ersten Periode"),
+                name="illacc_2_edt_1",
+                type=input.DATE,
+                required=True),
+            input.input(
+                lang(
+                    "Start date of second period",
+                    "Anfangsdatum der zweiten Periode"),
+                name="illacc_2_sdt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of second period",
+                    "Enddatum der zweiten Periode"),
+                name="illacc_2_edt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "Start date of third period",
+                    "Anfangsdatum der dritten Periode"),
+                name="illacc_2_sdt_3",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of third period",
+                    "Enddatum der dritten Periode"),
+                name="illacc_2_edt_3",
+                type=input.DATE),
+            ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Third Incapacity - Breaks
+
+            Please specify, 
+
+            Hints:
+            - 
+            ""","""
+            ### Dritte Arbeitsunfähigkeit - Unterbrüche
+
+            Sie 
+
+            Hinweise:
+            -
+            """))
+
+    if illacc_amount in [3]:
+        third_illacc_data = input.input_group("", [
+            input.input(
+                lang(
+                    "Start date of first period",
+                    "Anfangsdatum der ersten Periode"),
+                name="illacc_3_sdt_1",
+                type=input.DATE,
+                required=True),
+            input.input(
+                lang(
+                    "End date of first period",
+                    "Enddatum der ersten Periode"),
+                name="illacc_3_edt_1",
+                type=input.DATE,
+                required=True),
+            input.input(
+                lang(
+                    "Start date of second period",
+                    "Anfangsdatum der zweiten Periode"),
+                name="illacc_3_sdt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of second period",
+                    "Enddatum der zweiten Periode"),
+                name="illacc_3_edt_2",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "Start date of third period",
+                    "Anfangsdatum der dritten Periode"),
+                name="illacc_3_sdt_3",
+                type=input.DATE),
+            input.input(
+                lang(
+                    "End date of third period",
+                    "Enddatum der dritten Periode"),
+                name="illacc_3_edt_3",
+                type=input.DATE),
+            ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Militar or Civil Service - Details
+
+            Please specify on which date the service started and on which it ended.
+
+            Hints:
+            - 
+            ""","""
+            ### Militär-, Zivil- oder Schutzdienst
+
+            Bitte geben Sie das Start- und Enddatum des Dienstes an.
+
+            Hinweise:
+            -
+            """))
+
+    if case.get("incapacity_type") == "milservice":
+        milservice_data = input.input_group("", [
+            # Start of incapacity
+            input.input(
+                lang(
+                    "When did your incapacity for work start?",
+                    "An welchem Datum hat Ihre Arbeitsunfähigkeit begonnen?"),
+                    name="incapacity_1_sdt",
+                    type=input.DATE,
+                    required=False),
+            # End of incapacity
+            input.input(lang("When did your incapacity for work end?", "An welchem Datum hat Ihre Arbeitsunfähigkeit geendet?"),
+                name="incapacity_1_edt",
+                type=input.DATE,
+                required=False),
+        ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Pregnancy - Details
+
+            Please specify on which the pregnancy commenced and on which date the child was born.
+
+            Hints:
+            - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised
+            ""","""
+            ### Schwangerschaft - Details
+
+            Bitte geben Sie das Datum für den Beginn der Schwangerschaft und das Datum der Niederkunft an.
+
+            Hinweise:
+            - Das Bundesgericht hat in BGE 143 III 21 entschieden, dass die Schwangerschaft mit der Befruchtung der Eizelle beginnt.
+            """))
+
+    if case.get("incapacity_type") == "preg":
+        preg_data = input.input_group("", [
+            # Start of incapacity
+            input.input(
+                lang(
+                    "Start date of pregnancy",
+                    "Datum des Schwangerschaftsbeginns"),
+                    name="incapacity_1_sdt",
+                    type=input.DATE,
+                    required=False),
+            # End of incapacity
+            input.input(lang(
+                    "Date of childbirth",
+                    "Datum der Niederkunft"),
+                    name="incapacity_1_edt",
+                    type=input.DATE,
+                    required=False),
+        ])
+
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Termination
+
+            Please specify on which date the termination was (or shall be) received, the duration of the notice period and the on what end date the emplyment is allowed to be terminated.
+
+            Hints:
+            - 
+            ""","""
+            ### Dritte Arbeitsunfähigkeit - Unterbrüche
+
+            
+
+            Hinweise:
+            -
+            """))
+
+    if case.get("termination_occurence") == "Yes" or "Ja":
+        termination_data = input.input_group("", [
         # Date of termination
         input.input(
             lang(
@@ -369,24 +751,11 @@ def main():
             name="termination_dt",
             type=input.DATE,
             required=True),
-        # Start of incapacity
-        input.input(
-            lang(
-                "When did your incapacity for work start?",
-                "An welchem Datum hat Ihre Arbeitsunfähigkeit begonnen?"),
-                name="incapacity_1_sdt",
-                type=input.DATE,
-                required=False),
-        # End of incapacity
-        input.input(lang("When did your incapacity for work end?", "An welchem Datum hat Ihre Arbeitsunfähigkeit geendet?"),
-            name="incapacity_1_edt",
-            type=input.DATE,
-            required=False),
         # Duration of notice period
         input.select(
             lang(
-                "What is the duration of the notice period according to your employment contract (in months)?",
-                "Wie lange dauert die Kündigungsfrist gemäss Ihrem Arbeitsvertrag (in Monaten)?"),
+                "Duration of notice period (months)",
+                "Dauer der Kündigungsfrist (Monate)"),
             [lang(
                 "No mention of notice period",
                 "Keine Angaben zur Kündigungsfrist"),
@@ -397,8 +766,8 @@ def main():
         # Cancellation end of month required
         input.select(
             lang(
-                "Which possible termination date is specified in your employment contract?",
-                "Auf welchen Termin erlaubt Ihr Arbeitsvertrag die Kündigung?"),
+                "Termination Date",
+                "Kündigungstermin"),
             [lang(
                 "No mention of termination date",
                 "Keine Angaben zum Kündigungstermin"),
@@ -420,16 +789,41 @@ def main():
             name="endpoint",
             type=input.TEXT,
             required=True),
-            input.select(
-                lang("In which canton do you work?", "In welchem Kanton arbeiten Sie?"),
-                ["AG", "AI", "AR", "BS", "BL", "BE", "FR", "GE", "GL", "GR", "JU", "LU", "NE", "NW",
-                "OW", "SH", "SZ", "SO", "SG", "TG", "TI", "UR", "VS", "VD", "ZG", "ZH"],
-                name="workplace",
-                type=input.TEXT,
-                required=True),
-        # Place of work
     ], validate = check_form)
 
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Termination
+
+            You have chosen to evaluate trial period and termination: Please specify the length of the notice period for the trial period (in days).
+
+            Hints:
+            - 
+            ""","""
+            ### Dritte Arbeitsunfähigkeit - Unterbrüche
+
+            Sie wollen Kündigung und Probezeit auswerten: Bitte geben Sie Kündigungsfrist für die Probezeit an (in Tagen).
+
+            Hinweise:
+            -
+            """))
+
+    if case.get("termination_occurence") == ("Yes" or "Ja") and case.get("trial_relevance") != ("No" or "Nein"):
+        termination_data = input.input_group("", [
+        # Duration of notice period
+        input.select(
+            lang(
+                "Duration of notice period (months)",
+                "Dauer der Kündigungsfrist (Monate)"),
+            [lang(
+                "No mention of notice period",
+                "Keine Angaben zur Kündigungsfrist"),
+                "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12","13", "14", "15",
+                "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"],
+            name="notice_period_input",
+            type=input.TEXT,
+            required=True),
+    ])
 
     # --- VARIABLES AND LISTS FROM USER INPUT --- #
 

@@ -49,14 +49,20 @@ def lang(eng, german):
     else:
         return eng
 
-# Function to validate form data
-def check_form(data):
-    if data.get("employment_sdt") > data.get("termination_dt"):
-        return ("termination_dt", lang("ERROR: The date of termination of your employment cannot be older than its beginning.", "ERROR: Das Kündigungsdatum kann nicht vor dem Startdatum liegen."))
-    if data.get("incapacity_1_sdt") > data.get("incapacity_1_edt"):
-        return ("incapacity_1_edt", lang("ERROR: The end of your incapacity cannot be older than its beginning.", "ERROR: Das Enddatum der Arbeitsfähigkeit kann nicht vor ihrem Startdatum liegen."))
-    if len(data.get("workdays")) < 5:
-        return ("workdays", lang("ERROR: This calculator only supports 100% workload. Please choose 5 days or more.", "ERROR: Dieser Rechner kann nur Vollzeitarbeit evaluieren. Bitte wählen Sie mind. 5 Tage."))
+# Function to validate termination input
+def check_form_termination(data):
+    if employment_sdt > arrow.get(data["termination_dt"]):
+        return ("termination_dt", lang("ERROR: The termination must follow the employment start date.", "ERROR: Das Kündigungsdatum kann nicht vor dem Startdatum liegen."))
+
+# Function to validate illacc input
+def check_form_illacc(data):
+    data_lst = []
+    for key in data.keys():
+        if data[key] != "":
+            data_lst.append(data[key])
+    if sorted(data_lst) != data_lst:
+        return ("illacc_sdt_1", lang("ERROR: The dates entered must be in chronological order", "ERROR: Die eingebenen Daten müssen chronologisch aufeinander folgen."))
+
 
 # Function to correct date subtraction if origin month has more days than target month
 # See issue 1
@@ -193,16 +199,19 @@ def clamp(n, minn, maxn):
 def main():
 
 
+
     # --- SESSION CONTROL --- #
     session.set_env(input_panel_fixed=False,
                     output_animation=False)
 
 
+
     # --- INPUT --- #
     
+
     output.put_markdown(lang("""# Work Incapacity Calculator""", """# Rechner Arbeitsunfähigkeit"""))
 
-    # Landing Page Scope (Info)
+    # User info: Landing page
     with output.use_scope("scope1"):
         output.put_markdown(lang("""
             Were you incapacitated to work due to illness, accident, military service or pregnancy?
@@ -301,7 +310,8 @@ def main():
             lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")],
         validate=check_tc)
 
-    # Employment scope
+
+    # User Info: Employment data (block required)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Employment
@@ -319,7 +329,7 @@ def main():
             - Der Tag des Stellenantritts kann vom Anfangsdatum des Arbeitsvertrags abweichen.
             """))
 
-    # Input: Employment start date and place of work
+    # User Input: Employment data (block required)
     employment_data = input.input_group("", [
         input.input(
             lang(
@@ -336,8 +346,14 @@ def main():
             type=input.TEXT,
             required=True),
     ])
+    # Variables: Employment data (input required)
+    # Make employment start date global for validation
+    global employment_sdt
+    employment_sdt = arrow.get(employment_data["employment_sdt"])
+    workplace = employment_data["workplace"]
 
-    # Scope case combination
+
+    # User info: Case combinations (block required)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Case Combination
@@ -347,6 +363,7 @@ def main():
             Hints:
             - The evaluation of the trial period is advisable, when any incapacity to work occured during the trial period.
             - The evaluation of a termination is advisable, when a termination has already been issued.
+            - If termination is not evaluated, the date of today is taken to calculate seniority.
             ""","""
             ### Fallkonstellation
 
@@ -355,9 +372,10 @@ def main():
             Hinweise:
             - Die Auswertung der Probezeit ist insb. dann sinnvoll, wenn eine Arbeitsunfähigkeit während der Probezeit aufgetreten ist.
             - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
+            - Wird keine Kündigung ausgewertet, richtet sich das Dienstalter nach dem heutigen Datum.
             """))
 
-    # Input: Case combination
+    # User input: Case combinations (block required)
     case = input.input_group("", [
         input.select(lang("Which type of incapacity would you like to evaluate?", "Welche Art von Arbeitsunfähigkeit möchten Sie auswerten?"),
             options=[{
@@ -381,8 +399,54 @@ def main():
             name="termination_occurence",
             required=True),
     ])
+    # Variables: Case combinations (required input)
+    incapacity_type = case["incapacity_type"]
+    trial_relevance = case["trial_relevance"]
+    termination_occurence = case["termination_occurence"]
+    # Set end of seniority to today if no termination was issued
+    if case.get("termination_occurence") == "No" or "Nein":
+        termination_dt = arrow.now()
 
-    # Scope trial period
+
+    # User info: Amount of incapacities (block optional)
+    with output.use_scope("scope1", clear=True):
+        output.put_markdown(lang("""
+            ### Amount of Incapacities
+
+            You have chosen the evaluation of an incapacity to work due to illness(es) or accident(s). Please specify how many **seperate** illnesses or accidents you would like to evaluate.
+
+            Hints:
+            - Incapacities to work counts a **seperate**, when there is **no connection** between them. Example: There is no connection between having the flu and a car accident – these would count as seperate.
+            - Incapacities to work count **not as seperate**, when there is **any connection** between them. For example: A prolonged cancer treatment with multiple periods of absence would count as a single incapacity.
+            - Breaks between single incapacities (e.g. cancer) can be specified in the next step.
+            ""","""
+            ### Anzahl Arbeitsunfähigkeiten
+
+            Sie haben die Auswertung einer Arbeitsunfähigkeit zufolge Krankheit oder Unfall ausgewählt. Bitte geben Sie an, wie viele **getrennte** Krankheiten oder Unfälle Sie auswerten möchten.
+
+            Hinweise:
+            - Arbeitsunfähigkeiten gelten als **getrennt**, wenn zwischen ihnen **keinerlei Verbindung** besteht. Beispiel: Es besteht keine Verbindung zwischen einer Grippeerkrankung und einem Autounfall.
+            - Arbeitsunfähigkeiten gelten **nicht als getrennt**, wenn zwischen ihnen eine **irgendwie geartete Verbindung** besteht. Beispiel: Eine langandauernde Krebstherapie mit vielzähligen Abwesenheiten zählt als einzelne Arbeitsunfähigkeit.
+            - Unterbrüche zwischen einer einzelnen Arbeitsunfähigkeit können im nächsten Schritt angegeben werden.
+            """))
+
+    # User input: Amount of incapacities (block optional)
+    if incapacity_type == "illacc":
+        illacc_amount = input.select(lang("Amount of seperate illnesses or accidents", "Anzahl getrennter Unfälle oder Krankheiten"),
+            options=[{
+                "label":lang("One single accident or illness", "Einzelner Unfall oder Krankheit"),
+                "value":1
+                },{
+                "label":lang("Two or more accidents or illnesses", "Zwei oder mehr Unfälle oder Krankheiten"),
+                "value":2
+                },{
+                "label":lang("Three seperate accidents or illnesses", "Drei getrennte Unfälle oder Krankheiten"),
+                "value":3}
+            ],
+            required=True)
+
+
+    # User info: Trial period (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Trial Period
@@ -402,12 +466,13 @@ def main():
             - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
             """))
 
-    if case.get("trial_relevance") != "No" or "Nein":
+    # User input: Trial period (block optional)
+    if trial_relevance != ("No" or "Nein"):
         trial_period_data = input.input_group("", [
             input.checkbox(
                     lang("Which weekdays do you work on?", "An welchen Wochentagen arbeiten Sie?"),
                     ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
-                    name="workdays",
+                    name="workdays_input",
                     required=True),
             # probation period
             input.select(
@@ -424,59 +489,16 @@ def main():
                     name="prob_period_input",
                     type=input.TEXT,
                     required=True),
-            input.select(
-                lang(
-                    "Duration of probation period (months)?",
-                    "Dauer Probezeit (Monate)?"),
-                    [lang(
-                        "No mention of probation period",
-                        "Keine Angaben zur Probezeit"),
-                        "1", "2", "3",
-                    lang(
-                        "No probation period",
-                        "Keine Probezeit")],
-                    name="prob_period_input",
-                    type=input.TEXT,
-                    required=True),
-        ])
-
-    with output.use_scope("scope1", clear=True):
-        output.put_markdown(lang("""
-            ### Case Combination
-
-            You have chosen the evaluation of an incapacity to work due to illness(es) or accident(s). Please specify how many **seperate** illnesses or accidents you would like to evaluate.
-
-            Hints:
-            - Incapacities to work counts a **seperate**, when there is **no connection** between them. Example: There is no connection between having the flu and a car accident – these would count as seperate.
-            - Incapacities to work count **not as seperate**, when there is **any connection** between them. For example: A prolonged cancer treatment with multiple periods of absence would count as a single incapacity.
-            - Breaks between single incapacities (e.g. cancer) can be specified in the next step.
-            ""","""
-            ### Fallkonstellation
-
-            Sie haben die Auswertung einer Arbeitsunfähigkeit zufolge Krankheit oder Unfall ausgewählt. Bitte geben Sie an, wie viele **getrennte** Krankheiten oder Unfälle Sie auswerten möchten.
-
-            Hinweise:
-            - Arbeitsunfähigkeiten gelten als **getrennt**, wenn zwischen ihnen **keinerlei Verbindung** besteht. Beispiel: Es besteht keine Verbindung zwischen einer Grippeerkrankung und einem Autounfall.
-            - Arbeitsunfähigkeiten gelten **nicht als getrennt**, wenn zwischen ihnen eine **irgendwie geartete Verbindung** besteht. Beispiel: Eine langandauernde Krebstherapie mit vielzähligen Abwesenheiten zählt als einzelne Arbeitsunfähigkeit.
-            - Unterbrüche zwischen einer einzelnen Arbeitsunfähigkeit können im nächsten Schritt angegeben werden.
-            """))
-
-    if case.get("incapacity_type") == "illacc":
-        illacc_amount = input.select(lang("Amount of seperate illnesses or accidents", "Anzahl getrennter Unfälle oder Krankheiten"),
-            options=[{
-                "label":lang("One single accident or illness", "Einzelner Unfall oder Krankheit"),
-                "value":1
-                },{
-                "label":lang("Two or more accidents or illnesses", "Zwei oder mehr Unfälle oder Krankheiten"),
-                "value":2
-                },{
-                "label":lang("Three seperate accidents or illnesses", "Drei getrennte Unfälle oder Krankheiten"),
-                "value":3}
-            ],
-            required=True)
+        ]) 
+        # Declare variables from trial period
+        workdays_input = trial_period_data["workdays_input"]
+        prob_period_input = trial_period_data["prob_period_input"]
+    # Empty variables if no input
     else:
-        illacc_amount = 0
+        workdays_input, prob_period_input = 0, 0
 
+
+    # User info: First illacc (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### First Incapacity - Breaks
@@ -494,48 +516,60 @@ def main():
             -
             """))
 
+    # User input: First illacc (block optional)
     if illacc_amount in [1, 2, 3]:
         first_illacc_data = input.input_group("", [
             input.input(
                 lang(
                     "Start date of first period",
                     "Anfangsdatum der ersten Periode"),
-                name="illacc_1_sdt_1",
+                name="illacc_sdt_1",
                 type=input.DATE,
                 required=True),
             input.input(
                 lang(
                     "End date of first period",
                     "Enddatum der ersten Periode"),
-                name="illacc_1_edt_1",
+                name="illacc_edt_1",
                 type=input.DATE,
                 required=True),
             input.input(
                 lang(
                     "Start date of second period",
                     "Anfangsdatum der zweiten Periode"),
-                name="illacc_1_sdt_2",
+                name="illacc_sdt_2",
                 type=input.DATE),
             input.input(
                 lang(
                     "End date of second period",
                     "Enddatum der zweiten Periode"),
-                name="illacc_1_edt_2",
+                name="illacc_edt_2",
                 type=input.DATE),
             input.input(
                 lang(
                     "Start date of third period",
                     "Anfangsdatum der dritten Periode"),
-                name="illacc_1_sdt_3",
+                name="illacc_sdt_3",
                 type=input.DATE),
             input.input(
                 lang(
                     "End date of third period",
                     "Enddatum der dritten Periode"),
-                name="illacc_1_edt_3",
+                name="illacc_edt_3",
                 type=input.DATE),
-            ])
+            ], validate = check_form_illacc)
+        # Initiate list of illacc dates
+        illacc_1_lst = []
+        for key in first_illacc_data.keys():
+            if first_illacc_data[key] != "":
+                illacc_1_lst.append(arrow.get(first_illacc_data[key]))
+    # Empty list if no input
+    else:
+        illacc_1_lst = []
 
+
+
+    # User info: Second illacc (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Second Incapacity - Breaks
@@ -553,48 +587,59 @@ def main():
             -
             """))
 
+    # User input: Second illacc (block optional)
     if illacc_amount in [2, 3]:
         second_illacc_data = input.input_group("", [
             input.input(
                 lang(
                     "Start date of first period",
                     "Anfangsdatum der ersten Periode"),
-                name="illacc_2_sdt_1",
+                name="illacc_sdt_1",
                 type=input.DATE,
                 required=True),
             input.input(
                 lang(
                     "End date of first period",
                     "Enddatum der ersten Periode"),
-                name="illacc_2_edt_1",
+                name="illacc_edt_1",
                 type=input.DATE,
                 required=True),
             input.input(
                 lang(
                     "Start date of second period",
                     "Anfangsdatum der zweiten Periode"),
-                name="illacc_2_sdt_2",
+                name="illacc_sdt_2",
                 type=input.DATE),
             input.input(
                 lang(
                     "End date of second period",
                     "Enddatum der zweiten Periode"),
-                name="illacc_2_edt_2",
+                name="illacc_edt_2",
                 type=input.DATE),
             input.input(
                 lang(
                     "Start date of third period",
                     "Anfangsdatum der dritten Periode"),
-                name="illacc_2_sdt_3",
+                name="illacc_sdt_3",
                 type=input.DATE),
             input.input(
                 lang(
                     "End date of third period",
                     "Enddatum der dritten Periode"),
-                name="illacc_2_edt_3",
+                name="illacc_edt_3",
                 type=input.DATE),
-            ])
+            ], validate = check_form_illacc)
+        # Variables: Second illacc
+        illacc_2_lst = []
+        for key in second_illacc_data.keys():
+            if second_illacc_data[key] != "":
+                illacc_2_lst.append(arrow.get(second_illacc_data[key]))
+    # Empty list if no input
+    else:
+        illacc_2_lst = []
 
+
+    # User info: Third illacc (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Third Incapacity - Breaks
@@ -612,6 +657,7 @@ def main():
             -
             """))
 
+    # User input: Third illacc (block optional)
     if illacc_amount in [3]:
         third_illacc_data = input.input_group("", [
             input.input(
@@ -652,8 +698,17 @@ def main():
                     "Enddatum der dritten Periode"),
                 name="illacc_3_edt_3",
                 type=input.DATE),
-            ])
+            ], validate = check_form_illacc)
+        # Variables: Third illacc data set
+        illacc_3_lst = []
+        for key in third_illacc_data.keys():
+            if third_illacc_data[key] != "":
+                illacc_3_lst.append(arrow.get(third_illacc_data[key]))
+    # Empty list if no input
+    else:
+        illacc_3_lst = []
 
+    # User info: Milservice (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Militar or Civil Service - Details
@@ -671,23 +726,31 @@ def main():
             -
             """))
 
+    # User input: Milservice (block optional)
     if case.get("incapacity_type") == "milservice":
         milservice_data = input.input_group("", [
             # Start of incapacity
             input.input(
                 lang(
-                    "When did your incapacity for work start?",
-                    "An welchem Datum hat Ihre Arbeitsunfähigkeit begonnen?"),
-                    name="incapacity_1_sdt",
+                    "Start of service",
+                    "Dienstbeginn"),
+                    name="milservice_sdt",
                     type=input.DATE,
                     required=False),
             # End of incapacity
-            input.input(lang("When did your incapacity for work end?", "An welchem Datum hat Ihre Arbeitsunfähigkeit geendet?"),
-                name="incapacity_1_edt",
+            input.input(lang(
+                "End of service",
+                "Dienstende"),
+                name="milservice_edt",
                 type=input.DATE,
                 required=False),
         ])
+        # Variables: Milservice
+        milservice_lst = [arrow.get(milservice_data["milservice_sdt"]),
+                            arrow.get(milservice_data["milservice_edt"])]
 
+
+    # User info: Pregnancy (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Pregnancy - Details
@@ -705,6 +768,7 @@ def main():
             - Das Bundesgericht hat in BGE 143 III 21 entschieden, dass die Schwangerschaft mit der Befruchtung der Eizelle beginnt.
             """))
 
+    # User input: Pregnancy (block optional)
     if case.get("incapacity_type") == "preg":
         preg_data = input.input_group("", [
             # Start of incapacity
@@ -712,18 +776,23 @@ def main():
                 lang(
                     "Start date of pregnancy",
                     "Datum des Schwangerschaftsbeginns"),
-                    name="incapacity_1_sdt",
+                    name="preg_sdt",
                     type=input.DATE,
                     required=False),
             # End of incapacity
             input.input(lang(
                     "Date of childbirth",
                     "Datum der Niederkunft"),
-                    name="incapacity_1_edt",
+                    name="preg_edt",
                     type=input.DATE,
                     required=False),
         ])
+        # Variables: Pregnancy
+        preg_lst = [arrow.get(preg_data["preg_sdt"]),
+                    arrow.get(preg_data["preg_edt"])]
 
+
+    # User info: Termination (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
             ### Termination
@@ -733,7 +802,7 @@ def main():
             Hints:
             - 
             ""","""
-            ### Dritte Arbeitsunfähigkeit - Unterbrüche
+            ### Kündigung
 
             
 
@@ -741,66 +810,73 @@ def main():
             -
             """))
 
+    # User input: Termination (block optional)
     if case.get("termination_occurence") == "Yes" or "Ja":
         termination_data = input.input_group("", [
-        # Date of termination
-        input.input(
-            lang(
-                "On which date did you receive your notice of termination?",
-                "An welchem Datum haben Sie Ihre Kündigung erhalten?"),
-            name="termination_dt",
-            type=input.DATE,
-            required=True),
-        # Duration of notice period
-        input.select(
-            lang(
-                "Duration of notice period (months)",
-                "Dauer der Kündigungsfrist (Monate)"),
-            [lang(
-                "No mention of notice period",
-                "Keine Angaben zur Kündigungsfrist"),
-                "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12"],
-            name="notice_period_input",
-            type=input.TEXT,
-            required=True),
-        # Cancellation end of month required
-        input.select(
-            lang(
-                "Termination Date",
-                "Kündigungstermin"),
-            [lang(
-                "No mention of termination date",
-                "Keine Angaben zum Kündigungstermin"),
-            lang(
-                "Termination date only end of week",
-                "Kündungstermin nur auf Ende Woche"),
-            lang(
-                "Termination date only end of month",
-                "Kündigungstermin nur auf Ende Monat"),
-            lang(
-                "Termination date only end of quarter",
-                "Kündungstermin nur auf Ende Quartal"),
-            lang(
-                "Termination date only end of year",
-                "Kündungstermin nur auf Ende Jahr"),
-            lang(
-                "Termination date anytime",
-                "Kündungstermin jederzeit")],
-            name="endpoint",
-            type=input.TEXT,
-            required=True),
-    ], validate = check_form)
+            # Date of termination
+            input.input(
+                lang(
+                    "On which date did you receive your notice of termination?",
+                    "An welchem Datum haben Sie Ihre Kündigung erhalten?"),
+                name="termination_dt",
+                type=input.DATE,
+                required=True),
+            # Duration of notice period
+            input.select(
+                lang(
+                    "Duration of notice period (months)",
+                    "Dauer der Kündigungsfrist (Monate)"),
+                [lang(
+                    "No mention of notice period",
+                    "Keine Angaben zur Kündigungsfrist"),
+                    "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12"],
+                name="notice_period_input",
+                type=input.TEXT,
+                required=True),
+            # Cancellation end of month required
+            input.select(
+                lang(
+                    "Termination Date",
+                    "Kündigungstermin"),
+                [lang(
+                    "No mention of termination date",
+                    "Keine Angaben zum Kündigungstermin"),
+                lang(
+                    "Termination date only end of week",
+                    "Kündungstermin nur auf Ende Woche"),
+                lang(
+                    "Termination date only end of month",
+                    "Kündigungstermin nur auf Ende Monat"),
+                lang(
+                    "Termination date only end of quarter",
+                    "Kündungstermin nur auf Ende Quartal"),
+                lang(
+                    "Termination date only end of year",
+                    "Kündungstermin nur auf Ende Jahr"),
+                lang(
+                    "Termination date anytime",
+                    "Kündungstermin jederzeit")],
+                name="endpoint",
+                type=input.TEXT,
+                required=True),
+        ], validate = check_form_termination)
+        # Variables: Termination
+        termination_dt = arrow.get(termination_data["termination_dt"])
+        notice_period_input = termination_data["notice_period_input"]
+        endpoint = termination_data["endpoint"]
 
+
+    # User info: Trial termination (block optional)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
-            ### Termination
+            ### Trial Termination
 
             You have chosen to evaluate trial period and termination: Please specify the length of the notice period for the trial period (in days).
 
             Hints:
             - 
             ""","""
-            ### Dritte Arbeitsunfähigkeit - Unterbrüche
+            ### Kündigung Probezeit
 
             Sie wollen Kündigung und Probezeit auswerten: Bitte geben Sie Kündigungsfrist für die Probezeit an (in Tagen).
 
@@ -808,44 +884,50 @@ def main():
             -
             """))
 
-    if case.get("termination_occurence") == ("Yes" or "Ja") and case.get("trial_relevance") != ("No" or "Nein"):
+    # User input: Trial termination (block optional)
+    if termination_occurence == ("Yes" or "Ja") and trial_relevance != ("No" or "Nein"):
         termination_data = input.input_group("", [
-        # Duration of notice period
-        input.select(
-            lang(
-                "Duration of notice period (months)",
-                "Dauer der Kündigungsfrist (Monate)"),
-            [lang(
-                "No mention of notice period",
-                "Keine Angaben zur Kündigungsfrist"),
-                "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12","13", "14", "15",
-                "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"],
-            name="notice_period_input",
-            type=input.TEXT,
-            required=True),
-    ])
+            # Duration of notice period
+            input.select(
+                lang(
+                    "Duration of notice period (months)",
+                    "Dauer der Kündigungsfrist (Monate)"),
+                [lang(
+                    "No mention of notice period",
+                    "Keine Angaben zur Kündigungsfrist"),
+                    "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12","13", "14", "15",
+                    "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"],
+                name="trial_notice_input",
+                type=input.TEXT,
+                required=True),
+        ])
+        # Variables: Trial termination
+        trial_notice_input = termination_data["trial_notice_input"]
+
+
 
     # --- VARIABLES AND LISTS FROM USER INPUT --- #
 
-    # Declare variables
-    employment_sdt = arrow.get(data.get("employment_sdt"))
-    termination_dt = arrow.get(data.get("termination_dt"))
-    prob_period_input = data.get("prob_period_input") # Trail period duration
-    notice_period_input = data.get("notice_period_input") # Notice period duration
-    endpoint = data.get("endpoint") # Allowed termination end date
-    workplace = data.get("workplace") # Place of work
+    # List structure: unequal indicies indicate start dates, equal ones end dates (starts from index 0)
+    # List manipulation is handled in pairs hereafter
+    # List for incapacities initiated above
 
-    # Initiatie lists, structure: unequal indicies indicate start dates, equal ones end dates (starts from index 0)
-    incapacity_1_lst = [arrow.get(data.get("incapacity_1_sdt")), arrow.get(data.get("incapacity_1_edt"))]
+    # Lists with known input
     reg_employment_lst = [employment_sdt, termination_dt]
     prob_period_lst = [employment_sdt]
+
+    # Create list with seniority thresholds
+    syears = []
+    for i in range(0,35):
+        syears.append(employment_sdt.shift(years=i))
+
+    # Empty lists
     embargo_1_lst = []
     gap_1_lst = []
     notice_period_lst = []
     extension_lst = []
     sick_pay_lst = []
-    master_lst = [reg_employment_lst, prob_period_lst, incapacity_1_lst, embargo_1_lst, gap_1_lst, notice_period_lst, extension_lst, sick_pay_lst]
-    workdays_input = data.get("workdays")
+    master_lst = []
     workdays_num = []
     missed_workdays = []
     repeated_workdays = []
@@ -861,16 +943,17 @@ def main():
 
     # --- PROBATION PERIOD --- #
 
-    # Extract probation period from user input
-    if prob_period_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
-        prob_period_dur = 1
-    elif prob_period_input in ["No probation period", "Keine Probezeit"]:
-        prob_period_dur = 0
-        prob_period_lst.clear()
-    else:
-        prob_period_dur = int(prob_period_input)
+    if trial_relevance != "No" or "Nein":
 
-    try:
+        # Extract probation period from user input
+        if prob_period_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
+            prob_period_dur = 1
+        elif prob_period_input in ["No probation period", "Keine Probezeit"]:
+            prob_period_dur = 0
+            prob_period_lst.clear()
+        else:
+            prob_period_dur = int(prob_period_input)
+
         # Calculate probation period end date
         prob_period_lst.insert(1, min(prob_period_lst[0].shift(months=+prob_period_dur), termination_dt)) # BGer 4C.45/2004
         prob_period_lst[1] = subtract_corr(prob_period_lst[0], prob_period_lst[1])
@@ -902,54 +985,51 @@ def main():
             # Match start and end date
             single_date(prob_period_lst, 2, 3)
         
-        # Shift regular employment start date
+        # Shift regular employment start date to after trial period
         reg_employment_lst[0] = prob_period_lst[-1].shift(days=+1)
-
-    except IndexError as e:
-        logging.critical(e, exc_info=True)
-        pass
+    else:
+        prob_period_lst.clear()
 
 
     # --- TERMINATION AND NOTICE PERIOD --- #
 
-    # Create list with seniority thresholds
-    syears = []
-    for i in range(0,35):
-        syears.append(employment_sdt.shift(years=i))
+    if termination_occurence == "Yes" or "Ja":
 
-    # Legal minimum notice period according to seniority
-    if notice_period_input in ["No mention of notice period", "Keine Angaben zur Kündigungsfrist"]:
-        if termination_dt < syears[1]:
-            notice_period = 1
-        elif termination_dt >= syears[5]:
-            notice_period = 3
+        # Legal minimum notice period according to seniority
+        if notice_period_input in ["No mention of notice period", "Keine Angaben zur Kündigungsfrist"]:
+            if termination_dt < syears[1]:
+                notice_period = 1
+            elif termination_dt >= syears[5]:
+                notice_period = 3
+            else:
+                notice_period = 2
         else:
-            notice_period = 2
+            notice_period = int(notice_period_input)
+
+        # Calculate regular employment period end date
+        reg_employment_lst[1] = push_endpoint(reg_employment_lst[1], endpoint)
+
+        # Determine notice period start date (BGE 134 III 354)
+        notice_period_lst.insert(0, reg_employment_lst[1].shift(days=1))
+
+        # Determine notice period end date
+        notice_period_lst.insert(1, reg_employment_lst[1].shift(months=+notice_period))
+
+        # Push notice period end date if required
+        notice_period_lst[1] = push_endpoint(notice_period_lst[1], endpoint)
+
+        # Backwards check of notice period duration, truncate
+        while notice_period_lst[0].shift(months=+notice_period) < notice_period_lst[1]:
+            notice_period_lst[0] = notice_period_lst[0].shift(months=+1)
+            reg_employment_lst[1] = notice_period_lst[0].shift(days=-1)
+
+        # Calculate new employment end date
+        new_employment_edt = notice_period_lst[-1]
     else:
-        notice_period = int(notice_period_input)
-
-    # Calculate regular employment period end date
-    reg_employment_lst[1] = push_endpoint(reg_employment_lst[1], endpoint)
-
-    # Determine notice period start date (BGE 134 III 354)
-    notice_period_lst.insert(0, reg_employment_lst[1].shift(days=1))
-
-    # Determine notice period end date
-    notice_period_lst.insert(1, reg_employment_lst[1].shift(months=+notice_period))
-
-    # Push notice period end date if required
-    notice_period_lst[1] = push_endpoint(notice_period_lst[1], endpoint)
-
-    # Backwards check of notice period duration, truncate
-    while notice_period_lst[0].shift(months=+notice_period) < notice_period_lst[1]:
-        notice_period_lst[0] = notice_period_lst[0].shift(months=+1)
-        reg_employment_lst[1] = notice_period_lst[0].shift(days=-1)
-
-    # Calculate new employment end date
-    new_employment_edt = notice_period_lst[-1]
+        new_employment_edt = termination_dt
 
 
-    # --- INCAPACITY AND EMBARGO PERIOD --- #
+    # --- ILLACC AND EMBARGO PERIODS --- #
 
     # Conditions necessitating an embargo period
     if reg_employment_lst[0] <= incapacity_1_lst[1]:
@@ -1184,6 +1264,8 @@ def main():
     # --- DATE CONVERSION AND OUTPUT PREPARATION --- #
 
     # Convert lists
+    # Put all used lists into master lst
+    master_lst = []
     for lst in master_lst:
         for index, value in enumerate(lst):
             if isinstance(value, arrow.Arrow):

@@ -52,16 +52,24 @@ def lang(eng, german):
 # Function to validate termination input
 def check_form_termination(data):
     if employment_sdt > arrow.get(data["termination_dt"]):
-        return ("termination_dt", lang("ERROR: The termination must follow the employment start date.", "ERROR: Das Kündigungsdatum kann nicht vor dem Startdatum liegen."))
+        output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date.",
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen."),
+                            closable=True,
+                            scope="scope1")
+        return ("", "")
 
 # Function to validate illacc input
-def check_form_illacc(data):
+def check_form_incapacity(data):
     data_lst = []
     for key in data.keys():
         if data[key] != "":
             data_lst.append(data[key])
     if sorted(data_lst) != data_lst:
-        return ("illacc_sdt_1", lang("ERROR: The dates entered must be in chronological order", "ERROR: Die eingebenen Daten müssen chronologisch aufeinander folgen."))
+        output.put_error(lang("ERROR: Please check your date input. The dates must be entered in chronological order (oldest to youngest).",
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
+                            closable=True,
+                            scope="scope1")
+        return ("", "")
 
 
 # Function to correct date subtraction if origin month has more days than target month
@@ -444,6 +452,8 @@ def main():
                 "value":3}
             ],
             required=True)
+    else:
+        illacc_amount = 0
 
 
     # User info: Trial period (block optional)
@@ -557,7 +567,7 @@ def main():
                     "Enddatum der dritten Periode"),
                 name="illacc_edt_3",
                 type=input.DATE),
-            ], validate = check_form_illacc)
+            ], validate = check_form_incapacity)
         # Initiate list of illacc dates
         illacc_1_lst = []
         for key in first_illacc_data.keys():
@@ -628,7 +638,7 @@ def main():
                     "Enddatum der dritten Periode"),
                 name="illacc_edt_3",
                 type=input.DATE),
-            ], validate = check_form_illacc)
+            ], validate = check_form_incapacity)
         # Variables: Second illacc
         illacc_2_lst = []
         for key in second_illacc_data.keys():
@@ -698,7 +708,7 @@ def main():
                     "Enddatum der dritten Periode"),
                 name="illacc_3_edt_3",
                 type=input.DATE),
-            ], validate = check_form_illacc)
+            ], validate = check_form_incapacity)
         # Variables: Third illacc data set
         illacc_3_lst = []
         for key in third_illacc_data.keys():
@@ -736,18 +746,20 @@ def main():
                     "Dienstbeginn"),
                     name="milservice_sdt",
                     type=input.DATE,
-                    required=False),
+                    required=True),
             # End of incapacity
             input.input(lang(
                 "End of service",
                 "Dienstende"),
                 name="milservice_edt",
                 type=input.DATE,
-                required=False),
-        ])
+                required=True),
+        ], validate = check_form_incapacity)
         # Variables: Milservice
-        milservice_lst = [arrow.get(milservice_data["milservice_sdt"]),
-                            arrow.get(milservice_data["milservice_edt"])]
+        milservice_lst = [arrow.get(milservice_data["milservice_sdt"]), arrow.get(milservice_data["milservice_edt"])]
+    # Empty list if no input
+    else:
+        milservice_lst = []
 
 
     # User info: Pregnancy (block optional)
@@ -758,7 +770,8 @@ def main():
             Please specify on which the pregnancy commenced and on which date the child was born.
 
             Hints:
-            - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised
+            - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised.
+            - If the child has not yet been born, enter an approximate date.
             ""","""
             ### Schwangerschaft - Details
 
@@ -766,6 +779,7 @@ def main():
 
             Hinweise:
             - Das Bundesgericht hat in BGE 143 III 21 entschieden, dass die Schwangerschaft mit der Befruchtung der Eizelle beginnt.
+            - Falls das Kind noch nicht geboren ist, geben Sie ein ungefähres Datum an.
             """))
 
     # User input: Pregnancy (block optional)
@@ -778,18 +792,20 @@ def main():
                     "Datum des Schwangerschaftsbeginns"),
                     name="preg_sdt",
                     type=input.DATE,
-                    required=False),
+                    required=True),
             # End of incapacity
             input.input(lang(
                     "Date of childbirth",
                     "Datum der Niederkunft"),
                     name="preg_edt",
                     type=input.DATE,
-                    required=False),
-        ])
+                    required=True),
+        ], validate = check_form_incapacity)
         # Variables: Pregnancy
-        preg_lst = [arrow.get(preg_data["preg_sdt"]),
-                    arrow.get(preg_data["preg_edt"])]
+        preg_lst = [arrow.get(preg_data["preg_sdt"]), arrow.get(preg_data["preg_edt"])]
+    # Empty list if no input
+    else:
+        preg_lst = []
 
 
     # User info: Termination (block optional)
@@ -885,13 +901,13 @@ def main():
             """))
 
     # User input: Trial termination (block optional)
-    if termination_occurence == ("Yes" or "Ja") and trial_relevance != ("No" or "Nein"):
+    if (termination_occurence == ("Yes" or "Ja")) and (trial_relevance != ("No" or "Nein")):
         termination_data = input.input_group("", [
             # Duration of notice period
             input.select(
                 lang(
-                    "Duration of notice period (months)",
-                    "Dauer der Kündigungsfrist (Monate)"),
+                    "Duration of notice period (days)",
+                    "Dauer der Kündigungsfrist (Tage)"),
                 [lang(
                     "No mention of notice period",
                     "Keine Angaben zur Kündigungsfrist"),

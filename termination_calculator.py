@@ -133,6 +133,23 @@ def check_index(lst, index):
         lst.insert(index, "")
         return lst[index]
 
+# Function to populate dict key with sublist of pairs
+def populate_dct(in_dct, out_dct):
+    paired_lst = []
+    # New dict without empty keys, convert others to arrow object
+    new_dct = {}
+    for key, value in in_dct.items():
+        if in_dct[key] != "":
+            new_dct[key] = arrow.get(value)
+    # Put values into list
+    value_lst = list(new_dct.values())
+    while value_lst:
+        paired_lst.append(value_lst[:2])
+        value_lst = value_lst[2:]
+    print("Paired:", paired_lst)
+    return paired_lst
+
+
 # Function to check if a given date is a holiday
 # Source: https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf
 def holiday_checker(day, workplace):
@@ -570,10 +587,9 @@ def main():
             ], validate = check_form_incapacity)
         # Initiate dict of illacc dates
         incap_dct = {}
-        for key in first_illacc_data.keys():
-            if first_illacc_data[key] != "":
-                incap_dct[1] = [(arrow.get(first_illacc_data[key]))]
-
+        # Sort dates into incap dict as list pairs on the first key
+        incap_dct[1] = populate_dct(first_illacc_data, incap_dct)
+        print(incap_dct)
 
 
     # User info: Second illacc (block optional)
@@ -636,10 +652,8 @@ def main():
                 name="illacc_edt_3",
                 type=input.DATE),
             ], validate = check_form_incapacity)
-        # Variables: Second illacc
-        for key in second_illacc_data.keys():
-            if second_illacc_data[key] != "":
-                incap_dct[2] = [(arrow.get(second_illacc_data[key]))]
+        # Sort dates into incap dict as list pairs on the second key
+        incap_dct[2] = populate_dct(second_illacc_data, incap_dct)
 
 
     # User info: Third illacc (block optional)
@@ -702,11 +716,8 @@ def main():
                 name="illacc_3_edt_3",
                 type=input.DATE),
             ], validate = check_form_incapacity)
-        # Variables: Third illacc data set
-        incap_lst_3 = []
-        for key in third_illacc_data.keys():
-            if third_illacc_data[key] != "":
-                incap_dct[3] = [(arrow.get(third_illacc_data[key]))]
+        # Sort dates into incap dict as list pairs on the second key
+        incap_dct[3] = populate_dct(third_illacc_data, incap_dct)
 
 
 
@@ -979,10 +990,10 @@ def main():
                 holidays.append(day)
 
         # Extend probation period if incapacity occured during original probation period
-        if prob_period_lst[1] > incap_lst_1[0]:
+        if prob_period_lst[1] > incap_dct[1][0]:
             
             # Gather working days during probation period
-            for day in arrow.Arrow.range("days", max(prob_period_lst[0], incap_lst_1[0]), min(prob_period_lst[1], incap_lst_1[1])):
+            for day in arrow.Arrow.range("days", max(prob_period_lst[0], incap_dct[1][0]), min(prob_period_lst[1], incap_dct[1][1])):
                 if (day.weekday() in workdays_num) and (day not in holidays):
                     missed_workdays.append(day)
 
@@ -990,7 +1001,7 @@ def main():
             prob_period_lst.insert(2, prob_period_lst[1].shift(days=+1))
 
             # Gather working days during probation period extension and match against amount of missed working days
-            for day in arrow.Arrow.range("days", max(prob_period_lst[1], incap_lst_1[1]).shift(days=+1), limit=365):
+            for day in arrow.Arrow.range("days", max(prob_period_lst[1], incap_dct[1][1]).shift(days=+1), limit=365):
                 if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
                     repeated_workdays.append(day)
 
@@ -1188,12 +1199,14 @@ def main():
     # --- EMBARGO PERIODS --- #
 
     if incapacity_type == "milservice":
+        print("still to be implemented")
 
 
     # --- CASE: PREGNANCY --- #
     # --- EMBARGO PERIODS --- #
 
     if incapacity_type == "preg":
+        print("still to be implemented")
 
 
     # --- EVALUATION --- #

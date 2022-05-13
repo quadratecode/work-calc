@@ -568,14 +568,11 @@ def main():
                 name="illacc_edt_3",
                 type=input.DATE),
             ], validate = check_form_incapacity)
-        # Initiate list of illacc dates
-        illacc_1_lst = []
+        # Initiate dict of illacc dates
+        incap_dct = {}
         for key in first_illacc_data.keys():
             if first_illacc_data[key] != "":
-                illacc_1_lst.append(arrow.get(first_illacc_data[key]))
-    # Empty list if no input
-    else:
-        illacc_1_lst = []
+                incap_dct[1] = [(arrow.get(first_illacc_data[key]))]
 
 
 
@@ -640,13 +637,9 @@ def main():
                 type=input.DATE),
             ], validate = check_form_incapacity)
         # Variables: Second illacc
-        illacc_2_lst = []
         for key in second_illacc_data.keys():
             if second_illacc_data[key] != "":
-                illacc_2_lst.append(arrow.get(second_illacc_data[key]))
-    # Empty list if no input
-    else:
-        illacc_2_lst = []
+                incap_dct[2] = [(arrow.get(second_illacc_data[key]))]
 
 
     # User info: Third illacc (block optional)
@@ -710,13 +703,12 @@ def main():
                 type=input.DATE),
             ], validate = check_form_incapacity)
         # Variables: Third illacc data set
-        illacc_3_lst = []
+        incap_lst_3 = []
         for key in third_illacc_data.keys():
             if third_illacc_data[key] != "":
-                illacc_3_lst.append(arrow.get(third_illacc_data[key]))
-    # Empty list if no input
-    else:
-        illacc_3_lst = []
+                incap_dct[3] = [(arrow.get(third_illacc_data[key]))]
+
+
 
     # User info: Milservice (block optional)
     with output.use_scope("scope1", clear=True):
@@ -737,7 +729,7 @@ def main():
             """))
 
     # User input: Milservice (block optional)
-    if case.get("incapacity_type") == "milservice":
+    if incapacity_type == "milservice":
         milservice_data = input.input_group("", [
             # Start of incapacity
             input.input(
@@ -756,10 +748,8 @@ def main():
                 required=True),
         ], validate = check_form_incapacity)
         # Variables: Milservice
-        milservice_lst = [arrow.get(milservice_data["milservice_sdt"]), arrow.get(milservice_data["milservice_edt"])]
-    # Empty list if no input
-    else:
-        milservice_lst = []
+        incap_dct[1] = [arrow.get(milservice_data["milservice_sdt"]), arrow.get(milservice_data["milservice_edt"])]
+
 
 
     # User info: Pregnancy (block optional)
@@ -783,7 +773,7 @@ def main():
             """))
 
     # User input: Pregnancy (block optional)
-    if case.get("incapacity_type") == "preg":
+    if incapacity_type == "preg":
         preg_data = input.input_group("", [
             # Start of incapacity
             input.input(
@@ -802,10 +792,7 @@ def main():
                     required=True),
         ], validate = check_form_incapacity)
         # Variables: Pregnancy
-        preg_lst = [arrow.get(preg_data["preg_sdt"]), arrow.get(preg_data["preg_edt"])]
-    # Empty list if no input
-    else:
-        preg_lst = []
+        incap_dct[1] = [arrow.get(preg_data["preg_sdt"]), arrow.get(preg_data["preg_edt"])]
 
 
     # User info: Termination (block optional)
@@ -922,7 +909,7 @@ def main():
 
 
 
-    # --- VARIABLES AND LISTS FROM USER INPUT --- #
+    # --- DECLARE KNOWN VARIABLES, LISTS, DICTS --- #
 
     # List structure: unequal indicies indicate start dates, equal ones end dates (starts from index 0)
     # List manipulation is handled in pairs hereafter
@@ -932,14 +919,21 @@ def main():
     reg_employment_lst = [employment_sdt, termination_dt]
     prob_period_lst = [employment_sdt]
 
-    # Create list with seniority thresholds
+    # Sick pay matrix, starting after first year of service
+    # Source: https://www.gerichte-zh.ch/themen/arbeit/waehrend-arbeitsverhaeltnis/arbeitsverhinderung/krankheit-und-unfall.html
+    pay_matrix = [
+        ["", 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42], # ZH (weeks)
+        ["", 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BS / BL (months)
+        ["", 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BE (months)
+    ]
+
+    # List with seniority thresholds
     syears = []
     for i in range(0,35):
         syears.append(employment_sdt.shift(years=i))
 
     # Empty lists
-    embargo_1_lst = []
-    gap_1_lst = []
+    key_lst = []
     notice_period_lst = []
     extension_lst = []
     sick_pay_lst = []
@@ -948,6 +942,11 @@ def main():
     missed_workdays = []
     repeated_workdays = []
     holidays = []
+
+    # Empty dicts
+    embargo_dct = {}
+    gap_dct = {}
+    sick_pay_dct = {}
 
     # Gather weekday numbers from user input
     # Source: https://stackoverflow.com/a/70202124/14819955
@@ -980,10 +979,10 @@ def main():
                 holidays.append(day)
 
         # Extend probation period if incapacity occured during original probation period
-        if prob_period_lst[1] > incapacity_1_lst[0]:
+        if prob_period_lst[1] > incap_lst_1[0]:
             
             # Gather working days during probation period
-            for day in arrow.Arrow.range("days", max(prob_period_lst[0], incapacity_1_lst[0]), min(prob_period_lst[1], incapacity_1_lst[1])):
+            for day in arrow.Arrow.range("days", max(prob_period_lst[0], incap_lst_1[0]), min(prob_period_lst[1], incap_lst_1[1])):
                 if (day.weekday() in workdays_num) and (day not in holidays):
                     missed_workdays.append(day)
 
@@ -991,7 +990,7 @@ def main():
             prob_period_lst.insert(2, prob_period_lst[1].shift(days=+1))
 
             # Gather working days during probation period extension and match against amount of missed working days
-            for day in arrow.Arrow.range("days", max(prob_period_lst[1], incapacity_1_lst[1]).shift(days=+1), limit=365):
+            for day in arrow.Arrow.range("days", max(prob_period_lst[1], incap_lst_1[1]).shift(days=+1), limit=365):
                 if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
                     repeated_workdays.append(day)
 
@@ -1044,146 +1043,157 @@ def main():
     else:
         new_employment_edt = termination_dt
 
+    # --- GENERAL INCAPACITY --- #
 
-    # --- ILLACC AND EMBARGO PERIODS --- #
-
-    # Conditions necessitating an embargo period
-    if reg_employment_lst[0] <= incapacity_1_lst[1]:
-        embargo_1_lst.insert(0, max(reg_employment_lst[0], incapacity_1_lst[0])) # starts on the same day
+    # Incapacity was present at start of regular employment - populate lists
+    for key, value in incap_dct.items():
+        if reg_employment_lst[0] <= value[-1]:
+            # Build corresponding embargo dict
+            embargo_dct[key] = []
+            embargo_dct[key].insert([max(reg_employment_lst[0], incap_dct[key])]) # starts on the same day
+            # Build corresponding gap dict
+            gap_dct[key] = []
+            # Build corresponding sick pay dict
+            sick_pay_dct[key] = []
+    # No incapacity was present
     else:
-        embargo_1_lst.clear()
         embargo_total_dur = 0
         total_notice_overlap = 0
+    
 
-    try:
-        # Set embargo period end date according to seniority
-        if embargo_1_lst[0] < syears[1]:
-            embargo_1_lst.insert(1, min(embargo_1_lst[0].shift(days=29), incapacity_1_lst[1])) # cap at 30 days incl. start and end date
-        elif embargo_1_lst[0] >= syears[5]:
-            embargo_1_lst.insert(1, min(embargo_1_lst[0].shift(days=179), incapacity_1_lst[1])) # cap at 180 days incl. start and end date
-        else:
-            embargo_1_lst.insert(1, min(embargo_1_lst[0].shift(days=89), incapacity_1_lst[1])) # cap at 90 days
+    # --- CASE: ILLNESS OR ACCIDENT EMBARGO PERIODS --- #
+    # --- EMBARGO PERIODS, SICK PAY --- #
 
-        # Split embargo period if seniority threshold is crossed during embargo period
-        if syears[1].is_between(embargo_1_lst[0], incapacity_1_lst[1], "[)"):
-            embargo_1_lst[1] = min(embargo_1_lst[0].shift(days=29), syears[1].shift(days=-1))
-            embargo_reset_dur_1 = period_duration(embargo_1_lst[0], embargo_1_lst[1])
-            embargo_1_lst.insert(2, syears[1])
-            embargo_1_lst.insert(3, min(embargo_1_lst[2].shift(days=(89 - embargo_reset_dur_1)), incapacity_1_lst[1]))
-            embargo_reset_dur_2 = period_duration(embargo_1_lst[2], embargo_1_lst[3])
-        elif syears[5].is_between(embargo_1_lst[0], incapacity_1_lst[1], "[)"):
-            embargo_1_lst[1] = min(embargo_1_lst[0].shift(days=89), syears[5].shift(days=-1))
-            embargo_reset_dur_1 = period_duration(embargo_1_lst[0], embargo_1_lst[1])
-            embargo_1_lst.insert(2, syears[5])
-            embargo_1_lst.insert(3, min(embargo_1_lst[2].shift(days=(179 - embargo_reset_dur_1)), incapacity_1_lst[1]))
-            embargo_reset_dur_2 = period_duration(embargo_1_lst[2], embargo_1_lst[3])
-        else:
-            embargo_reset_dur_1 = period_duration(embargo_1_lst[0], embargo_1_lst[1])
-            embargo_reset_dur_2 = 0
+    # Case type
+    if incapacity_type == "illacc":
 
-        # Calculate total embargo dur
-        embargo_total_dur = embargo_reset_dur_1 + embargo_reset_dur_2
+        for key, value in incap_dct.items():
+            # Set embargo period end date according to seniority
+            if embargo_dct[key] < syears[1]:
+                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=29), incap_dct[key][1])) # cap at 30 days incl. start and end date
+            elif embargo_dct[key][0] >= syears[5]:
+                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=179), incap_dct[key][1])) # cap at 180 days incl. start and end date
+            else:
+                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=89), incap_dct[key][1])) # cap at 90 days
 
-        # Calculate notice overlap of first embargo period
-        notice_overlap_1 = overlap_calc(notice_period_lst[0], embargo_1_lst[0], notice_period_lst[1], embargo_1_lst[1])
+            # Split embargo period if seniority threshold is crossed during embargo period
+            if syears[1].is_between(embargo_dct[key][0], incap_dct[key][1], "[)"):
+                embargo_dct[key][1] = min(embargo_dct[key][0].shift(days=29), syears[1].shift(days=-1))
+                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
+                embargo_dct[key].insert(2, syears[1])
+                embargo_dct[key].insert(3, min(embargo_dct[key][2].shift(days=(89 - embargo_reset_dur_1)), incap_dct[key][1]))
+                embargo_reset_dur_2 = period_duration(embargo_dct[key][2], embargo_dct[key][3])
+            elif syears[5].is_between(embargo_dct[key][0], incap_dct[key][1], "[)"):
+                embargo_dct[key][1] = min(embargo_dct[key][0].shift(days=89), syears[5].shift(days=-1))
+                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
+                embargo_dct[key].insert(2, syears[5])
+                embargo_dct[key].insert(3, min(embargo_dct[key][2].shift(days=(179 - embargo_reset_dur_1)), incap_dct[key][1]))
+                embargo_reset_dur_2 = period_duration(embargo_dct[key][2], embargo_dct[key][3])
+            else:
+                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
+                embargo_reset_dur_2 = 0
 
-        # Handle cases where the embargo period was split
-        if embargo_reset_dur_2 != 0:
-            
-            # Insert gap period between end of first embargo period and start of second embargo period
-            gap_1_lst.insert(0, embargo_1_lst[1].shift(days=1))
-            gap_1_lst.insert(1, embargo_1_lst[2].shift(days=-1))
-            gap_dur = period_duration(gap_1_lst[0], gap_1_lst[1])
+            # Calculate total embargo dur
+            embargo_total_dur = embargo_reset_dur_1 + embargo_reset_dur_2
 
-            # Calculate overlap of second embargo period
-            notice_overlap_2 = overlap_calc(notice_period_lst[0], embargo_1_lst[2], notice_period_lst[1], embargo_1_lst[3])
+            # Calculate notice overlap of first embargo period
+            notice_overlap_1 = overlap_calc(notice_period_lst[0], embargo_dct[key][0], notice_period_lst[1], embargo_dct[key][1])
 
-            # Compare overlap with gap duration
-            # Delete second embargo period total overlap fits into gap
-            if notice_overlap_1 + notice_overlap_2 <= gap_dur and termination_dt < embargo_1_lst[1]:
-                 del embargo_1_lst[2:]
-                 notice_overlap_2 = 0
-        else:
-            notice_overlap_2 = 0
+            # Handle cases where the embargo period was split
+            if embargo_reset_dur_2 != 0:
+                
+                # Insert gap period between end of first embargo period and start of second embargo period
+                gap_dct[key].insert(0, embargo_dct[key][1].shift(days=1))
+                gap_dct[key].insert(1, embargo_dct[key][2].shift(days=-1))
+                gap_dur = period_duration(gap_dct[key][0], gap_dct[key][1])
 
-        # Calculate total notice overlap
-        total_notice_overlap = notice_overlap_1 + notice_overlap_2
+                # Calculate overlap of second embargo period
+                notice_overlap_2 = overlap_calc(notice_period_lst[0], embargo_dct[key][2], notice_period_lst[1], embargo_dct[key][3])
 
-        # Shift missed notice period days, start and end date
-        if total_notice_overlap != 0:
-            notice_shift = total_notice_overlap
-            notice_period_lst.insert(2, max(notice_period_lst[1], embargo_1_lst[-1]).shift(days=+1))
-            notice_period_lst.insert(3, max(notice_period_lst[1], embargo_1_lst[-1]).shift(days=+notice_shift))
-            single_date(notice_period_lst, 2, 3)
+                # Compare overlap with gap duration
+                # Delete second embargo period total overlap fits into gap
+                if notice_overlap_1 + notice_overlap_2 <= gap_dur and termination_dt < embargo_dct[key][1]:
+                    del embargo_dct[key][2:]
+                    notice_overlap_2 = 0
+            else:
+                notice_overlap_2 = 0
 
-        # Create extension if needed
-        if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
-            extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
-            extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
-            single_date(extension_lst, 0, 1)
-            new_employment_edt = extension_lst[-1]
-        else:
-            new_employment_edt = notice_period_lst[-1]
+            # Calculate total notice overlap
+            total_notice_overlap = notice_overlap_1 + notice_overlap_2
 
-    except IndexError as e:
-        logging.critical(e, exc_info=True)
-        pass
+            # Shift missed notice period days, start and end date
+            if total_notice_overlap != 0:
+                notice_shift = total_notice_overlap
+                notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1))
+                notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_shift))
+                single_date(notice_period_lst, 2, 3)
+
+            # Create extension if needed
+            if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
+                extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
+                extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
+                single_date(extension_lst, 0, 1)
+                new_employment_edt = extension_lst[-1]
+            else:
+                new_employment_edt = notice_period_lst[-1]
+
+            # Choose row according to user input
+            if workplace in ["ZH", "SH", "TG"]:
+                canton = 0
+                unit = "weeks"
+            elif workplace in ["BS", "BL"]:
+                canton = 1
+                unit = "months"
+            else:
+                canton = 2
+                unit = "months"
+
+            # Define sick pay start date
+            sick_pay_lst.insert(0, max(employment_sdt.shift(months=3), incap_dct[key][0]))
+
+            # Calculate seniority at the beginning of the incapacity
+            # Source: https://stackoverflow.com/a/70038244/14819955
+            sick_pay_syear_start_index = get_last_index(syears, lambda x: x < sick_pay_lst[0])
+
+            # Calculate sick pay according to service year
+            if sick_pay_lst[0] < syears[1]:
+                sick_pay_lst.insert(1, sick_pay_lst[0].shift(weeks=+3, days=-1))
+            else:
+                sick_pay_lst.insert(1, sick_pay_lst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
+
+            # Cap sick pay end date
+            sick_pay_lst[1] = clamp(sick_pay_lst[1], sick_pay_lst[0], min(new_employment_edt, incap_dct[key][-1]))
+
+            # Calculate seniority at the end of the incapacity
+            sick_pay_syear_end_index = get_last_index(syears, lambda x: x < incap_dct[key][1])
+
+            # Compare seniority at start and end
+            if sick_pay_syear_start_index == sick_pay_syear_end_index: # in the same year
+                sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
+                sick_pay_reset_dur_2 = 0
+            else:
+                sick_pay_lst[1] = min(sick_pay_lst[1], syears[sick_pay_syear_end_index].shift(days=-1))
+                sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
+                sick_pay_lst.insert(2, syears[sick_pay_syear_end_index])
+                sick_pay_lst.insert(3, sick_pay_lst[2].shift(**{unit:(pay_matrix[canton][sick_pay_syear_end_index])}, days=-1))
+                sick_pay_lst[3] = clamp(sick_pay_lst[3], sick_pay_lst[2], min(new_employment_edt, incap_dct[key][-1]))
+                sick_pay_reset_dur_2 = period_duration(sick_pay_lst[2], sick_pay_lst[3])
+
+            # Calculate total sick pay duration
+            total_sick_pay_dur = sick_pay_reset_dur_1 + sick_pay_reset_dur_2
 
 
-    # --- SICK PAY --- #
 
-    # Sick pay matrix, starting after first year of service
-    # Source: https://www.gerichte-zh.ch/themen/arbeit/waehrend-arbeitsverhaeltnis/arbeitsverhinderung/krankheit-und-unfall.html
-    pay_matrix = [
-        ["", 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42], # ZH (weeks)
-        ["", 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BS / BL (months)
-        ["", 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BE (months)
-    ]
+    # --- CASE: MILITARY OR CIVIL SERVICE --- #
+    # --- EMBARGO PERIODS --- #
 
-    # Choose row according to user input
-    if workplace in ["ZH", "SH", "TG"]:
-        canton = 0
-        unit = "weeks"
-    elif workplace in ["BS", "BL"]:
-        canton = 1
-        unit = "months"
-    else:
-        canton = 2
-        unit = "months"
+    if incapacity_type == "milservice":
 
-    # Define sick pay start date
-    sick_pay_lst.insert(0, max(employment_sdt.shift(months=3), incapacity_1_lst[0]))
 
-    # Calculate seniority at the beginning of the incapacity
-    # Source: https://stackoverflow.com/a/70038244/14819955
-    sick_pay_syear_start_index = get_last_index(syears, lambda x: x < sick_pay_lst[0])
+    # --- CASE: PREGNANCY --- #
+    # --- EMBARGO PERIODS --- #
 
-    # Calculate sick pay according to service year
-    if sick_pay_lst[0] < syears[1]:
-        sick_pay_lst.insert(1, sick_pay_lst[0].shift(weeks=+3, days=-1))
-    else:
-        sick_pay_lst.insert(1, sick_pay_lst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
-
-    # Cap sick pay end date
-    sick_pay_lst[1] = clamp(sick_pay_lst[1], sick_pay_lst[0], min(new_employment_edt, incapacity_1_lst[-1]))
-
-    # Calculate seniority at the end of the incapacity
-    sick_pay_syear_end_index = get_last_index(syears, lambda x: x < incapacity_1_lst[1])
-
-    # Compare seniority at start and end
-    if sick_pay_syear_start_index == sick_pay_syear_end_index: # in the same year
-        sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
-        sick_pay_reset_dur_2 = 0
-    else:
-        sick_pay_lst[1] = min(sick_pay_lst[1], syears[sick_pay_syear_end_index].shift(days=-1))
-        sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
-        sick_pay_lst.insert(2, syears[sick_pay_syear_end_index])
-        sick_pay_lst.insert(3, sick_pay_lst[2].shift(**{unit:(pay_matrix[canton][sick_pay_syear_end_index])}, days=-1))
-        sick_pay_lst[3] = clamp(sick_pay_lst[3], sick_pay_lst[2], min(new_employment_edt, incapacity_1_lst[-1]))
-        sick_pay_reset_dur_2 = period_duration(sick_pay_lst[2], sick_pay_lst[3])
-
-    # Calculate total sick pay duration
-    total_sick_pay_dur = sick_pay_reset_dur_1 + sick_pay_reset_dur_2
+    if incapacity_type == "preg":
 
 
     # --- EVALUATION --- #
@@ -1202,13 +1212,13 @@ def main():
     
     # Termintaion between embargo periods
     try:
-        if termination_dt.is_between(embargo_1_lst[0], embargo_1_lst[1], "[]") and not termination_dt.is_between(employment_sdt, prob_period_lst[-1], "[]"):
+        if termination_dt.is_between(embargo_dct[key][0], embargo_dct[key][1], "[]") and not termination_dt.is_between(employment_sdt, prob_period_lst[-1], "[]"):
             termination_case = "embargo_case"
     except IndexError as e:
         logging.critical(e, exc_info=True)
         pass
     try:
-        if termination_dt.is_between(embargo_1_lst[2], embargo_1_lst[3], "[]") and not termination_dt.is_between(employment_sdt, prob_period_lst[-1], "[]"):
+        if termination_dt.is_between(embargo_dct[key][2], embargo_dct[key][3], "[]") and not termination_dt.is_between(employment_sdt, prob_period_lst[-1], "[]"):
             termination_case = "embargo_case"
     except IndexError as e:
         logging.critical(e, exc_info=True)
@@ -1224,19 +1234,19 @@ def main():
         del notice_period_lst[2:]
         total_notice_overlap = 0
         reg_employment_lst.clear()
-        embargo_1_lst.clear()
+        embargo_dct[key].clear()
         extension_lst.clear()
         new_employment_edt = notice_period_lst[-1]
 
     # Adjust sick pay
     try:
         if (sick_pay_lst[-1] > new_employment_edt) and sick_pay_reset_dur_2 != 0:
-            sick_pay_lst[3] = clamp(sick_pay_lst[3], sick_pay_lst[2], min(new_employment_edt, incapacity_1_lst[-1]))
+            sick_pay_lst[3] = clamp(sick_pay_lst[3], sick_pay_lst[2], min(new_employment_edt, incap_dct[key][-1]))
             sick_pay_reset_dur_2 = period_duration(sick_pay_lst[2], sick_pay_lst[3])
             total_sick_pay_dur = sick_pay_reset_dur_1 + sick_pay_reset_dur_2
         # Cap first sick pay period
         elif (sick_pay_lst[-1] > new_employment_edt) and (sick_pay_reset_dur_2 == 0):
-            sick_pay_lst[1] = clamp(sick_pay_lst[1], sick_pay_lst[0], min(new_employment_edt, incapacity_1_lst[-1]))
+            sick_pay_lst[1] = clamp(sick_pay_lst[1], sick_pay_lst[0], min(new_employment_edt, incap_dct[key][-1]))
             sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
             total_sick_pay_dur = sick_pay_reset_dur_1
     except IndexError as e:
@@ -1306,10 +1316,10 @@ def main():
         dict(Task=lang("Regular Employment", "Reguläre Anstellung"), Start=check_index(reg_employment_lst, 0), End=check_index(reg_employment_lst, 1), Stack="stack_3"),
         dict(Task=lang("Regular Notice Period", "Ordentliche Kündigungsfrist"), Start=check_index(notice_period_lst, 0), End=check_index(notice_period_lst, 1), Stack="stack_3"),
         dict(Task=lang("Compensation Missed Notice Period", "Kompensation verpasste Kündigungsfrist"), Start=check_index(notice_period_lst, 2), End=check_index(notice_period_lst, 3), Stack="stack_3"),
-        dict(Task=lang("Embargo Period", "Sperrfrist"), Start=check_index(embargo_1_lst, 0), End=check_index(embargo_1_lst, 1), Stack="stack_3"),
-        dict(Task=lang("Embargo Period", "Sperrfrist"), Start=check_index(embargo_1_lst, 2), End=check_index(embargo_1_lst, 3), Stack="stack_3"),
+        dict(Task=lang("Embargo Period", "Sperrfrist"), Start=check_index(embargo_dct[key], 0), End=check_index(embargo_dct[key], 1), Stack="stack_3"),
+        dict(Task=lang("Embargo Period", "Sperrfrist"), Start=check_index(embargo_dct[key], 2), End=check_index(embargo_dct[key], 3), Stack="stack_3"),
         dict(Task=lang("Notice Period Extension", "Verlängerung Kündigungsfrist"), Start=check_index(extension_lst, 0), End=check_index(extension_lst, 1), Stack="stack_3"),
-        dict(Task=lang("Incapacity", "Arbeitsunfähigkeit"), Start=check_index(incapacity_1_lst, 0), End=check_index(incapacity_1_lst, 1), Stack="stack_4"),
+        dict(Task=lang("Incapacity", "Arbeitsunfähigkeit"), Start=check_index(incap_dct[key], 0), End=check_index(incap_dct[key], 1), Stack="stack_4"),
         dict(Task="[PH_B]", Start=output_dict["termination_dt"], End=output_dict["termination_dt"], Stack="stack_5"), # Placeholder Bottom
     ])
 
@@ -1344,7 +1354,7 @@ def main():
 
     fig.update_traces(marker_line_width=1.0, opacity=0.95)
 
-    fig.update_xaxes(range=[output_dict["employment_sdt"], incapacity_1_lst[1]])
+    fig.update_xaxes(range=[output_dict["employment_sdt"], incap_dct[key][1]])
 
     fig.update_layout(
         barmode="overlay",
@@ -1425,8 +1435,8 @@ def main():
         [lang("Event", "Ereignis"), lang("Date", "Datum")],
         [lang("Employment Start Date", "Beginn Arbeitsverhältnis"), output_dict["employment_sdt"]],
         [lang("Date of Termination", "Kündigungsdatum"), output_dict["termination_dt"]],
-        [lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incapacity_1_lst[0]],
-        [lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incapacity_1_lst[1]],
+        [lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incap_dct[key][0]],
+        [lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incap_dct[key][1]],
         ])
 
         output.put_markdown(lang("""## Non-binding Evaluation""", """## Unverbindliche Auswertung""")).style('margin-top: 20px'), None,

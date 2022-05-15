@@ -82,9 +82,13 @@ def subtract_corr(sdt, edt):
         return(edt)
 
 # Funtion to validate checkbox
-def check_tc(terms):
-    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in terms:
+def check_tc(data):
+    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in data:
         return (lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Um fortzufahren müssen die Nutzungsbedingungen akzeptiert werden."))
+
+def check_box(data):
+    if len(data.get("workdays")) < 1:
+        return ("workdays", lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mind. einen Wochentag."))
 
 # Function to calculate overlap between two date ranges
 def overlap_calc(sdt_1, sdt_2, edt_1, edt_2):
@@ -500,7 +504,7 @@ def main():
                     lang("Which weekdays do you work on?", "An welchen Wochentagen arbeiten Sie?"),
                     ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
                     name="workdays_input",
-                    required=True),
+                    validate = check_box),
             # probation period
             input.select(
                 lang(
@@ -589,7 +593,6 @@ def main():
         incap_dct = {}
         # Sort dates into incap dict as list pairs on the first key
         incap_dct[1] = populate_dct(first_illacc_data, incap_dct)
-        print(incap_dct)
 
 
     # User info: Second illacc (block optional)
@@ -938,13 +941,23 @@ def main():
         ["", 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6 ,6, 6, 6 ,6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6], # BE (months)
     ]
 
+    # Choose sick pay duration
+    if workplace in ["ZH", "SH", "TG"]:
+        canton = 0
+        unit = "weeks"
+    elif workplace in ["BS", "BL"]:
+        canton = 1
+        unit = "months"
+    else:
+        canton = 2
+        unit = "months"
+
     # List with seniority thresholds
     syears = []
     for i in range(0,35):
         syears.append(employment_sdt.shift(years=i))
 
     # Empty lists
-    key_lst = []
     notice_period_lst = []
     extension_lst = []
     sick_pay_lst = []
@@ -1061,7 +1074,7 @@ def main():
         if reg_employment_lst[0] <= value[-1]:
             # Build corresponding embargo dict
             embargo_dct[key] = []
-            embargo_dct[key].insert([max(reg_employment_lst[0], incap_dct[key])]) # starts on the same day
+            embargo_dct[key].insert(0, [max(reg_employment_lst[0], incap_dct[key])]) # starts on the same day
             # Build corresponding gap dict
             gap_dct[key] = []
             # Build corresponding sick pay dict
@@ -1072,142 +1085,165 @@ def main():
         total_notice_overlap = 0
     
 
-    # --- CASE: ILLNESS OR ACCIDENT EMBARGO PERIODS --- #
-    # --- EMBARGO PERIODS, SICK PAY --- #
+    # --- CASE: ILLNESS OR ACCIDENT --- #
 
     # Case type
     if incapacity_type == "illacc":
 
+        # Keep score of embargo balance, sick pay balance and total notice overlap
+        embargo_balance = 0
+        total_notice_overlap = 0
+
         for key, value in incap_dct.items():
-            # Set embargo period end date according to seniority
-            if embargo_dct[key] < syears[1]:
-                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=29), incap_dct[key][1])) # cap at 30 days incl. start and end date
-            elif embargo_dct[key][0] >= syears[5]:
-                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=179), incap_dct[key][1])) # cap at 180 days incl. start and end date
-            else:
-                embargo_dct[key].insert(1, min(embargo_dct[key][0].shift(days=89), incap_dct[key][1])) # cap at 90 days
+            for incap_sublst in value:
+                while embargo_balance <= embargo_cap:
 
-            # Split embargo period if seniority threshold is crossed during embargo period
-            if syears[1].is_between(embargo_dct[key][0], incap_dct[key][1], "[)"):
-                embargo_dct[key][1] = min(embargo_dct[key][0].shift(days=29), syears[1].shift(days=-1))
-                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
-                embargo_dct[key].insert(2, syears[1])
-                embargo_dct[key].insert(3, min(embargo_dct[key][2].shift(days=(89 - embargo_reset_dur_1)), incap_dct[key][1]))
-                embargo_reset_dur_2 = period_duration(embargo_dct[key][2], embargo_dct[key][3])
-            elif syears[5].is_between(embargo_dct[key][0], incap_dct[key][1], "[)"):
-                embargo_dct[key][1] = min(embargo_dct[key][0].shift(days=89), syears[5].shift(days=-1))
-                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
-                embargo_dct[key].insert(2, syears[5])
-                embargo_dct[key].insert(3, min(embargo_dct[key][2].shift(days=(179 - embargo_reset_dur_1)), incap_dct[key][1]))
-                embargo_reset_dur_2 = period_duration(embargo_dct[key][2], embargo_dct[key][3])
-            else:
-                embargo_reset_dur_1 = period_duration(embargo_dct[key][0], embargo_dct[key][1])
-                embargo_reset_dur_2 = 0
+                    # Handling Embargo
+                    # Set embargo cap according to seniority at beginning of incapacity
+                    if incap_sublst[0] < syears[1]:
+                        embargo_cap = 29 # cap at 29 days incl. start and end date
+                    elif incap_sublst[0] >= syears[5]:
+                        embargo_cap = 179 # cap at 179 days incl. start and end date
+                    else:
+                        embargo_cap = 89 # cap at 90 days incl. start and end date
 
-            # Calculate total embargo dur
-            embargo_total_dur = embargo_reset_dur_1 + embargo_reset_dur_2
+                    # Insert embargo end date into embargo dict, max date at end of embargo
+                    embargo_dct[key].insert(1, min(incap_sublst[0].shift(days=embargo_cap), incap_sublst[1]))
 
-            # Calculate notice overlap of first embargo period
-            notice_overlap_1 = overlap_calc(notice_period_lst[0], embargo_dct[key][0], notice_period_lst[1], embargo_dct[key][1])
+                    # Check if service year 1, 5 is crossed during embargo period
+                    if syears[1].is_between(incap_sublst[0], incap_sublst[1], "[)"):
+                        crossed_syear = 1
+                        new_embargo_cap = 89
+                    elif syears[5].is_between(incap_sublst[0], incap_sublst[1], "[)"):
+                        crossed_syear = 5
+                        new_embargo_cap = 179
 
-            # Handle cases where the embargo period was split
-            if embargo_reset_dur_2 != 0:
+                    # Split embargo period if seniority threshold is crossed during embargo period
+                    # Put split embargo periods into dict key 11, 12, 13...
+                    if crossed_syear != 0:
+                        embargo_dct[key][1] = min(embargo_dct[key][0].shift(days=embargo_cap), syears[crossed_syear].shift(days=-1)) # End before split
+                        embargo_reset_dur = period_duration(embargo_dct[key][0], embargo_dct[key][1])
+                        embargo_dct[key + 10](0, syears[crossed_syear]) # Start after split
+                        embargo_dct[key + 10](1, min(embargo_dct[key][2].shift(days=(new_embargo_cap - embargo_reset_dur)), incap_sublst[1])) # End after split
+
+                    # Calculate overlap between embargo period and notice period
+                    notice_overlap = overlap_calc(notice_period_lst[0], embargo_dct[key][0], notice_period_lst[1], embargo_dct[key][1])
+
+                    # Clean up cases where the embargo period was split
+                    if (key + 10) in embargo_dct.keys():
+                        
+                        # Insert gap period between end of first embargo period and start of second embargo period
+                        gap_dct[key].insert(0, embargo_dct[key][1].shift(days=1))
+                        gap_dct[key].insert(1, embargo_dct[key][2].shift(days=-1))
+                        gap_dur = period_duration(gap_dct[key][0], gap_dct[key][1])
+
+                        # Calculate overlap of second embargo period
+                        split_notice_overlap = overlap_calc(notice_period_lst[0], embargo_dct[key + 10][0], notice_period_lst[1], embargo_dct[key + 10][1])
+
+                        # Compare overlap with gap duration
+                        # Delete second embargo period total overlap fits into gap
+                        if notice_overlap + split_notice_overlap <= gap_dur and termination_dt < embargo_dct[key][1]:
+                            del embargo_dct[key + 10]
+                        else:
+                            notice_overlap = notice_overlap + split_notice_overlap
+
+                    # Keep score of embargo balance
+                    embargo_balance = embargo_balance + period_duration(embargo_dct[key][0], embargo_dct[key][1])
+
+                    # Keep score of total notice overlap
+                    total_notice_overlap = total_notice_overlap + notice_overlap
+
+        # Handle sick pay
+
+        sick_pay_balance = 0
+
+        # Split sick pay periods into years
+        for key, value in incap_dct.items():
+            for incap_sublst in value:
+
+                sickpay_sublst_1 = incap_sublst
+                sickpay_sublst_2 = []
                 
-                # Insert gap period between end of first embargo period and start of second embargo period
-                gap_dct[key].insert(0, embargo_dct[key][1].shift(days=1))
-                gap_dct[key].insert(1, embargo_dct[key][2].shift(days=-1))
-                gap_dur = period_duration(gap_dct[key][0], gap_dct[key][1])
+                # Define sick pay start date
+                sickpay_sublst_1[0] = max(employment_sdt.shift(months=3), sickpay_sublst_1[0])
 
-                # Calculate overlap of second embargo period
-                notice_overlap_2 = overlap_calc(notice_period_lst[0], embargo_dct[key][2], notice_period_lst[1], embargo_dct[key][3])
+                # Calculate seniority at the beginning of the incapacity
+                # Source: https://stackoverflow.com/a/70038244/14819955
+                sick_pay_syear_start_index = get_last_index(syears, lambda x: x < sickpay_sublst_1[0])
 
-                # Compare overlap with gap duration
-                # Delete second embargo period total overlap fits into gap
-                if notice_overlap_1 + notice_overlap_2 <= gap_dur and termination_dt < embargo_dct[key][1]:
-                    del embargo_dct[key][2:]
-                    notice_overlap_2 = 0
-            else:
-                notice_overlap_2 = 0
+                # Calculate seniority at the end of the incapacity
+                sick_pay_syear_end_index = get_last_index(syears, lambda x: x < sickpay_sublst_1[1])
 
-            # Calculate total notice overlap
-            total_notice_overlap = notice_overlap_1 + notice_overlap_2
+                # Compare seniority at start and end, split if not the same
+                # Group into dict according to start year
+                if sick_pay_syear_start_index != sick_pay_syear_end_index: # in the same year
+                    # Split period after syear
+                    sickpay_sublst_2.insert(0, syears[sick_pay_syear_end_index])
+                    sickpay_sublst_2.insert(1, sickpay_sublst_1[1])
+                    # Cap first period a day before syear
+                    sickpay_sublst_1[1] = min(sick_pay_dct[key][1], syears[sick_pay_syear_end_index].shift(days=-1))
+                    # Sort second period into dict
+                    sick_pay_dct[sick_pay_syear_start_index].append([sickpay_sublst_2])
 
-            # Shift missed notice period days, start and end date
-            if total_notice_overlap != 0:
-                notice_shift = total_notice_overlap
-                notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1))
-                notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_shift))
-                single_date(notice_period_lst, 2, 3)
+                # Sort first period into dict
+                sick_pay_dct[sick_pay_syear_start_index].append([sickpay_sublst_1])
+                
+        # Loop through sick pay periods according to starting year
+        for key, value in sick_pay_dct.items():
+            for sickpay_sublst in value:
+                while sick_pay_balance <= sick_pay_cap:
 
-            # Create extension if needed
-            if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
-                extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
-                extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
-                single_date(extension_lst, 0, 1)
-                new_employment_edt = extension_lst[-1]
-            else:
-                new_employment_edt = notice_period_lst[-1]
+                    # Calculate sick pay according to service year
+                    if sickpay_sublst[0] < syears[1]:
+                        sickpay_sublst[1].shift(weeks=+3, days=-1)
+                        sick_pay_cap = 21
+                    else:
+                        sickpay_sublst[1].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1)
+                        sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
-            # Choose row according to user input
-            if workplace in ["ZH", "SH", "TG"]:
-                canton = 0
-                unit = "weeks"
-            elif workplace in ["BS", "BL"]:
-                canton = 1
-                unit = "months"
-            else:
-                canton = 2
-                unit = "months"
+                    # Cap sick pay end date
+                    sick_pay_dct[1] = clamp(sickpay_sublst[1], sickpay_sublst[0], min(new_employment_edt, incap_sublst[-1]))
 
-            # Define sick pay start date
-            sick_pay_lst.insert(0, max(employment_sdt.shift(months=3), incap_dct[key][0]))
+                    sublist_sick_pay_dur = period_duration(sickpay_sublst[1], sickpay_sublst[0])
 
-            # Calculate seniority at the beginning of the incapacity
-            # Source: https://stackoverflow.com/a/70038244/14819955
-            sick_pay_syear_start_index = get_last_index(syears, lambda x: x < sick_pay_lst[0])
+                    sick_pay_balance = sick_pay_balance + sublist_sick_pay_dur
 
-            # Calculate sick pay according to service year
-            if sick_pay_lst[0] < syears[1]:
-                sick_pay_lst.insert(1, sick_pay_lst[0].shift(weeks=+3, days=-1))
-            else:
-                sick_pay_lst.insert(1, sick_pay_lst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
+                    # Shift back if cap is exceeded
+                    if  sick_pay_balance > sick_pay_cap:
+                        sick_pay_dct[1].shift(days=-sick_pay_balance-sick_pay_cap)
 
-            # Cap sick pay end date
-            sick_pay_lst[1] = clamp(sick_pay_lst[1], sick_pay_lst[0], min(new_employment_edt, incap_dct[key][-1]))
+                    sublist_sick_pay_dur = period_duration(sickpay_sublst[1], sickpay_sublst[0])
 
-            # Calculate seniority at the end of the incapacity
-            sick_pay_syear_end_index = get_last_index(syears, lambda x: x < incap_dct[key][1])
-
-            # Compare seniority at start and end
-            if sick_pay_syear_start_index == sick_pay_syear_end_index: # in the same year
-                sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
-                sick_pay_reset_dur_2 = 0
-            else:
-                sick_pay_lst[1] = min(sick_pay_lst[1], syears[sick_pay_syear_end_index].shift(days=-1))
-                sick_pay_reset_dur_1 = period_duration(sick_pay_lst[0], sick_pay_lst[1])
-                sick_pay_lst.insert(2, syears[sick_pay_syear_end_index])
-                sick_pay_lst.insert(3, sick_pay_lst[2].shift(**{unit:(pay_matrix[canton][sick_pay_syear_end_index])}, days=-1))
-                sick_pay_lst[3] = clamp(sick_pay_lst[3], sick_pay_lst[2], min(new_employment_edt, incap_dct[key][-1]))
-                sick_pay_reset_dur_2 = period_duration(sick_pay_lst[2], sick_pay_lst[3])
-
-            # Calculate total sick pay duration
-            total_sick_pay_dur = sick_pay_reset_dur_1 + sick_pay_reset_dur_2
-
-
+                    sick_pay_balance = sick_pay_balance + sublist_sick_pay_dur
 
     # --- CASE: MILITARY OR CIVIL SERVICE --- #
-    # --- EMBARGO PERIODS --- #
 
     if incapacity_type == "milservice":
         print("still to be implemented")
 
 
     # --- CASE: PREGNANCY --- #
-    # --- EMBARGO PERIODS --- #
 
     if incapacity_type == "preg":
         print("still to be implemented")
 
+    # --- NOTICE PERIOD --- #
+
+    # Handling notice period
+    # Shift missed notice period days, start and end date
+    if total_notice_overlap != 0:
+        notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1)) # start date
+        notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_overlap)) # end date
+        single_date(notice_period_lst, 2, 3)
+
+        # Create extension if needed
+        if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
+            extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
+            extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
+            single_date(extension_lst, 0, 1)
+            new_employment_edt = extension_lst[-1]
+        else:
+            new_employment_edt = notice_period_lst[-1]
 
     # --- EVALUATION --- #
 

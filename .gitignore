@@ -140,3 +140,5 @@ cython_debug/
 
 # Testing ground
 testfile.py
+/vscode
+.vscode

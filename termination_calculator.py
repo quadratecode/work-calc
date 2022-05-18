@@ -51,24 +51,43 @@ def lang(eng, german):
 # Function to validate termination input
 def check_form_termination(data):
     if employment_sdt > arrow.get(data["termination_dt"], "DD.MM.YYYY"):
-        output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date.",
-                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen."),
+        output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date. You entered the following start date: " + str(employment_sdt.format("DD.MM.YYYY")) ,
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen. Sie haben das folgende Startdatum eingetragen: " + str(employment_sdt.format("DD.MM.YYYY"))),
                             closable=True,
                             scope="scope1")
         return ("", "")
 
 # Function to validate illacc input
 def check_form_incapacity(data):
-    data_lst = []
+    data_lst_1 = []
+    data_lst_2 = list(data.values())
     for key in data.keys():
         if data[key] != "":
-            data_lst.append(data[key])
-    if sorted(data_lst) != data_lst:
-        output.put_error(lang("ERROR: Please check your date input. The dates must be entered in chronological order (oldest to youngest).",
-                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
+            data_lst_1.append(arrow.get(data[key], "DD.MM.YYYY"))
+    # Check if dates are chronologically ordered
+    if sorted(data_lst_1) != data_lst_1:
+        output.put_error(lang("ERROR: Please check your date input. The periods must be in chronological order (oldest period first).",
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Zeitperioden chronologisch aufeinander folgen (älteste Periode zuerst)."),
                             closable=True,
                             scope="scope1")
         return ("", "")
+    # Check if number of dates is even
+    if len(data_lst_1) % 2:
+        output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
+                            closable=True,
+                            scope="scope1")
+        return ("", "")
+    # Check if dates have been entered consecutively
+    for item in data_lst_2[1:]:
+        if data_lst_2[data_lst_2.index(item) - 1] == "":
+            output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
+                                    "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
+                                closable=True,
+                                scope="scope1")
+            return ("", "")
+            
+    
 
 # Funtion to validate checkbox
 def check_tc(data):
@@ -81,7 +100,7 @@ def check_tc(data):
 
 def check_box(data):
     if len(data["workdays_input"]) < 1:
-        output.put_error(lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mind. einen Wochentag."),
+        output.put_error(lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mindestens einen Wochentag."),
                             closable=True,
                             scope="scope1")
         return ("", "")
@@ -337,11 +356,11 @@ def main():
         output.put_markdown(lang("""
             ### Terms and Conditions
 
-            This app is provided "as is". Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
+            This app is provided "as is" and free of charge. Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
             ""","""
             ### Nutzungsbedingungen
 
-            Diese App wird im Ist-Zustand zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr und unter Ausschluss jeglicher Haftung, soweit gesetzlich zulässig. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.
+            Diese App wird im Ist-Zustand und kostenlos zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr und unter Ausschluss jeglicher Haftung, soweit gesetzlich zulässig. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.
             """))
     
     # Terms and conditions
@@ -358,6 +377,7 @@ def main():
 
             Hints:
             - The first day of work can be different from the starting date of the employment contract.
+            - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
             ### Arbeitsverhältnis
 
@@ -365,22 +385,24 @@ def main():
 
             Hinweise:
             - Der Tag des Stellenantritts kann vom Anfangsdatum des Arbeitsvertrags abweichen.
+            - Geben Sie Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020)
             """))
 
     # User Input: Employment data (block required)
     employment_data = input.input_group("", [
         input.input(
             lang(
-                "First day of work (DD.MM.YYYY)",
+                "First Day of Work",
                 "Tag des Stellenatritts"),
             name="employment_sdt",
             type=input.TEXT,
             required=True,
             pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
             maxlength="10",
-            minlength="10"),
+            minlength="10",
+            placeholder="DD.MM.YYYY"),
         input.select(
-            lang("Place of work (canton)", "Arbeitsort (Kanton)"),
+            lang("Place of Work (Canton)", "Arbeitsort (Kanton)"),
             ["AG", "AI", "AR", "BS", "BL", "BE", "FR", "GE", "GL", "GR", "JU", "LU", "NE", "NW",
             "OW", "SH", "SZ", "SO", "SG", "TG", "TI", "UR", "VS", "VD", "ZG", "ZH"],
             name="workplace",
@@ -432,7 +454,7 @@ def main():
             inline=True,
             required=True),
         input.select(lang("Evaluation of tiral period?", "Auswertung der Probezeit?"),
-            [lang("Yes", "Ja"), lang("No", "Nein"), lang("I don't know", "Ich weiss nicht")],
+            [lang("Yes", "Ja"), lang("No", "Nein")],
             name="trial_relevance",
             required=True),
         input.select(lang("Evaluation of termination?", "Auswertung einer Kündigung?"),
@@ -492,26 +514,26 @@ def main():
         output.put_markdown(lang("""
             ### Trial Period
 
-            Please specify on which weekdays the 
+            Please specify the weekly workdays and the duration of the probation period.
 
             Hints:
-            - The evaluation of the trial period is advisable, when any incapacity to work occured during the trial period.
-            - The evaluation of a termination is advisable, when a termination has already been issued.
+            - Acutal missed workdays during the probation trial period can lead to an extension of the trial period.
+            - This app respects public holidays during the evaluation. Individual reasons for missed workdays during the trial period are not taken into account.
             ""","""
             ### Angaben Probezeit
 
-            Bitte wählen Sie Ihre Fallkonstellation aus.
+            Bitte geben Sie die Arbeitstage und die Dauer der Probezeit an.
 
             Hinweise:
-            - Die Auswertung der Probezeit ist insb. dann sinnvoll, wenn eine Arbeitsunfähigkeit während der Probezeit aufgetreten ist.
-            - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
+            - Verpasste Arbeitstage können zu einer Verlängerung der Probezeit führen.
+            - Diese App berücksichtigt die Feiertage im Auswertungszeitraum. Individuelle Gründe für verpasste Arbeitstage während der Probezeit werden nicht berücksichtigt.
             """))
 
     # User input: Trial period (block optional)
     if trial_relevance != ("No" or "Nein"):
         trial_period_data = input.input_group("", [
             input.checkbox(
-                    lang("Which weekdays do you work on?", "An welchen Wochentagen arbeiten Sie?"),
+                    lang("Working days", "Arbeitstage"),
                     ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
                     name="workdays_input",
                     required=True),
@@ -539,62 +561,92 @@ def main():
     # User info: First illacc (alternate block)
     with output.use_scope("scope1", clear=True):
         output.put_markdown(lang("""
-            ### First Incapacity - Breaks
+            ### Incapacity due to illness or accident
 
-            Please specify, 
+            You have chosen the evaluation of one or more incapacities due to illness(es) or accident(s).
+            For each incapacity (illness or accident) you can specify up to three periods of absence.
 
             Hints:
-            - 
+            - Enter the periods in chronological order.
+            - If only one continuous period occurred, leave the remaining form fields empty.
+            - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
-            ### Erste Arbeitsunfähigkeit - Unterbrüche
+            ### Arbeitsunfähigkeit zufolge Krankheit oder Unfall
 
-            Sie 
+            Sie haben die Auswertung einer oder mehreren Arbeitsunfähigkeiten zufolge Krankheit oder Unfall ausgewählt.
+            Für jede dieser Arbeitsunfähigkeiten können Sie bis zu drei Zeitperioden angeben, in denen Sie abwesend waren.
 
             Hinweise:
-            -
+            - Tragen Sie die Zeitperioden in chronologischer Reihenfolge ein.
+            - Sollten Sie während einer einzelnen, zusammenhängenden Zeitperiode abwesend gewesen sein, lassen Sie die restlichen Formularfelder leer.
+            - Geben Sie Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020)
             """))
 
     # User input: First illacc (alternate block)
     if illacc_amount in [1, 2, 3]:
-        first_illacc_data = input.input_group("", [
+        first_illacc_data = input.input_group(lang("Incapacity 1", "Arbeitsunfähgkeit 1"), [
             input.input(
                 lang(
-                    "Start date of first period",
-                    "Anfangsdatum der ersten Periode"),
+                    "Period 1 - Start",
+                    "Periode 1 - Beginn"),
                 name="illacc_sdt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
-                    "End date of first period",
-                    "Enddatum der ersten Periode"),
+                    "Period 1 - End",
+                    "Periode 1 - Ende"),
                 name="illacc_edt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
-                    "Start date of second period",
-                    "Anfangsdatum der zweiten Periode"),
+                    "Period 2 - Start (optional)",
+                    "Periode 2 - Beginn (optional)"),
                 name="illacc_sdt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
-                    "End date of second period",
-                    "Enddatum der zweiten Periode"),
+                    "Period 2 - End (optional)",
+                    "Periode 2 - Ende (optional)"),
                 name="illacc_edt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
-                    "Start date of third period",
-                    "Anfangsdatum der dritten Periode"),
+                    "Period 3 - Start (optional)",
+                    "Periode 3 - Beginn (optional)"),
                 name="illacc_sdt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
-                    "End date of third period",
-                    "Enddatum der dritten Periode"),
+                    "Period 3 - End (optional)",
+                    "Periode 3 - Ende (optional)"),
                 name="illacc_edt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             ], validate = check_form_incapacity)
         # Initiate dict of illacc dates
         incap_dct = {}
@@ -602,129 +654,128 @@ def main():
         incap_dct[1] = populate_dct(first_illacc_data)
 
 
-    # User info: Second illacc (block optional)
-    with output.use_scope("scope1", clear=True):
-        output.put_markdown(lang("""
-            ### Second Incapacity - Breaks
-
-            Please specify, 
-
-            Hints:
-            - 
-            ""","""
-            ### Zweite Arbeitsunfähigkeit - Unterbrüche
-
-            Sie 
-
-            Hinweise:
-            -
-            """))
-
     # User input: Second illacc (block optional)
     if illacc_amount in [2, 3]:
-        second_illacc_data = input.input_group("", [
+        second_illacc_data = input.input_group("Incapacity 2", "Arbeitsunfähgkeit 2", [
             input.input(
                 lang(
                     "Start date of first period",
                     "Anfangsdatum der ersten Periode"),
                 name="illacc_sdt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of first period",
                     "Enddatum der ersten Periode"),
                 name="illacc_edt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "Start date of second period",
                     "Anfangsdatum der zweiten Periode"),
                 name="illacc_sdt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of second period",
                     "Enddatum der zweiten Periode"),
                 name="illacc_edt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "Start date of third period",
                     "Anfangsdatum der dritten Periode"),
                 name="illacc_sdt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of third period",
                     "Enddatum der dritten Periode"),
                 name="illacc_edt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             ], validate = check_form_incapacity)
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[2] = populate_dct(second_illacc_data)
 
-
-    # User info: Third illacc (block optional)
-    with output.use_scope("scope1", clear=True):
-        output.put_markdown(lang("""
-            ### Third Incapacity - Breaks
-
-            Please specify, 
-
-            Hints:
-            - 
-            ""","""
-            ### Dritte Arbeitsunfähigkeit - Unterbrüche
-
-            Sie 
-
-            Hinweise:
-            -
-            """))
-
     # User input: Third illacc (block optional)
     if illacc_amount in [3]:
-        third_illacc_data = input.input_group("", [
+        third_illacc_data = input.input_group("Incapacity 3", "Arbeitsunfähgkeit 3", [
             input.input(
                 lang(
                     "Start date of first period",
                     "Anfangsdatum der ersten Periode"),
                 name="illacc_3_sdt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of first period",
                     "Enddatum der ersten Periode"),
                 name="illacc_3_edt_1",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "Start date of second period",
                     "Anfangsdatum der zweiten Periode"),
                 name="illacc_3_sdt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of second period",
                     "Enddatum der zweiten Periode"),
                 name="illacc_3_edt_2",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "Start date of third period",
                     "Anfangsdatum der dritten Periode"),
                 name="illacc_3_sdt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             input.input(
                 lang(
                     "End date of third period",
                     "Enddatum der dritten Periode"),
                 name="illacc_3_edt_3",
-                type=input.DATE),
+                type=input.TEXT,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             ], validate = check_form_incapacity)
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[3] = populate_dct(third_illacc_data)
@@ -758,15 +809,21 @@ def main():
                     "Start of service",
                     "Dienstbeginn"),
                     name="milservice_sdt",
-                    type=input.DATE,
-                    required=True),
+                    type=input.TEXT,
+                    required=True,
+                    pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                    maxlength="10",
+                    minlength="10"),
             # End of incapacity
             input.input(lang(
                 "End of service",
                 "Dienstende"),
                 name="milservice_edt",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
         ], validate = check_form_incapacity)
         # Variables: Milservice
         incap_dct[1] = [arrow.get(milservice_data["milservice_sdt"], "DD.MM.YYYY"), arrow.get(milservice_data["milservice_edt"], "DD.MM.YYYY")]
@@ -802,15 +859,21 @@ def main():
                     "Start date of pregnancy",
                     "Datum des Schwangerschaftsbeginns"),
                     name="preg_sdt",
-                    type=input.DATE,
-                    required=True),
+                    type=input.TEXT,
+                    required=True,
+                    pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                    maxlength="10",
+                    minlength="10"),
             # End of incapacity
             input.input(lang(
                     "Date of childbirth",
                     "Datum der Niederkunft"),
                     name="preg_edt",
-                    type=input.DATE,
-                    required=True),
+                    type=input.TEXT,
+                    required=True,
+                    pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                    maxlength="10",
+                    minlength="10"),
         ], validate = check_form_incapacity)
         # Variables: Pregnancy
         incap_dct[1] = [arrow.get(preg_data["preg_sdt"], "DD.MM.YYYY"), arrow.get(preg_data["preg_edt"], "DD.MM.YYYY")]
@@ -843,8 +906,11 @@ def main():
                     "On which date did you receive your notice of termination?",
                     "An welchem Datum haben Sie Ihre Kündigung erhalten?"),
                 name="termination_dt",
-                type=input.DATE,
-                required=True),
+                type=input.TEXT,
+                required=True,
+                pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
+                maxlength="10",
+                minlength="10"),
             # Duration of notice period
             input.select(
                 lang(

@@ -48,6 +48,7 @@ def lang(eng, german):
     else:
         return eng
 
+
 # Function to validate termination input
 def check_form_termination(data):
     if employment_sdt > arrow.get(data["termination_dt"], "DD.MM.YYYY"):
@@ -63,7 +64,10 @@ def check_form_incapacity(data):
     data_lst_2 = list(data.values())
     for key in data.keys():
         if data[key] != "":
-            data_lst_1.append(arrow.get(data[key], "DD.MM.YYYY"))
+            try: 
+                data_lst_1.append(arrow.get(data[key], "DD.MM.YYYY"))
+            except:
+                return (key, lang("ERROR: Please enter a valid date.", "ERROR: Bitte geben Sie ein gültiges Datum ein."))
     # Check if dates are chronologically ordered
     if sorted(data_lst_1) != data_lst_1:
         output.put_error(lang("ERROR: Please check your date input. The periods must be in chronological order (oldest period first).",
@@ -86,8 +90,6 @@ def check_form_incapacity(data):
                                 closable=True,
                                 scope="scope1")
             return ("", "")
-            
-    
 
 # Funtion to validate checkbox
 def check_tc(data):
@@ -666,7 +668,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of first period",
@@ -676,7 +679,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "Start date of second period",
@@ -694,7 +698,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "Start date of third period",
@@ -703,7 +708,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of third period",
@@ -712,7 +718,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             ], validate = check_form_incapacity)
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[2] = populate_dct(second_illacc_data)
@@ -729,7 +736,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of first period",
@@ -739,7 +747,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "Start date of second period",
@@ -748,7 +757,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of second period",
@@ -757,7 +767,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "Start date of third period",
@@ -766,7 +777,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of third period",
@@ -775,7 +787,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             ], validate = check_form_incapacity)
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[3] = populate_dct(third_illacc_data)
@@ -813,7 +826,8 @@ def main():
                     required=True,
                     pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                     maxlength="10",
-                    minlength="10"),
+                    minlength="10",
+                    placeholder="DD.MM.YYYY"),
             # End of incapacity
             input.input(lang(
                 "End of service",
@@ -823,7 +837,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
         ], validate = check_form_incapacity)
         # Variables: Milservice
         incap_dct[1] = [arrow.get(milservice_data["milservice_sdt"], "DD.MM.YYYY"), arrow.get(milservice_data["milservice_edt"], "DD.MM.YYYY")]
@@ -863,7 +878,8 @@ def main():
                     required=True,
                     pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                     maxlength="10",
-                    minlength="10"),
+                    minlength="10",
+                    placeholder="DD.MM.YYYY"),
             # End of incapacity
             input.input(lang(
                     "Date of childbirth",
@@ -873,7 +889,8 @@ def main():
                     required=True,
                     pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                     maxlength="10",
-                    minlength="10"),
+                    minlength="10",
+                    placeholder="DD.MM.YYYY"),
         ], validate = check_form_incapacity)
         # Variables: Pregnancy
         incap_dct[1] = [arrow.get(preg_data["preg_sdt"], "DD.MM.YYYY"), arrow.get(preg_data["preg_edt"], "DD.MM.YYYY")]
@@ -910,7 +927,8 @@ def main():
                 required=True,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             # Duration of notice period
             input.select(
                 lang(

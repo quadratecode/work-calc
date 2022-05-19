@@ -5,6 +5,7 @@ from dateutil.easter import *
 import arrow
 import plotly.express as px
 import pandas as pd
+import time
 
 #§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§#
 
@@ -48,17 +49,23 @@ def lang(eng, german):
     else:
         return eng
 
-
-# Function to validate termination input
-def check_form_termination(data):
-    if employment_sdt > arrow.get(data["termination_dt"], "DD.MM.YYYY"):
-        output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date. You entered the following start date: " + str(employment_sdt.format("DD.MM.YYYY")) ,
-                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen. Sie haben das folgende Startdatum eingetragen: " + str(employment_sdt.format("DD.MM.YYYY"))),
+# Funtion to validate checkbox
+def check_tc(data):
+    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in data:
+        output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
                             closable=True,
-                            scope="scope1")
+                            scope="scope_1")
         return ("", "")
 
-# Function to validate illacc input
+# Validate employment form
+def check_form_employment(data):
+    try: 
+        arrow.get(data["employment_sdt"], "DD.MM.YYYY")
+    except:
+        return ("employment_sdt", lang("ERROR: Please enter a valid date.", "ERROR: Bitte geben Sie ein gültiges Datum ein."))
+
+# Validate incap form
 def check_form_incapacity(data):
     data_lst_1 = []
     data_lst_2 = list(data.values())
@@ -73,14 +80,14 @@ def check_form_incapacity(data):
         output.put_error(lang("ERROR: Please check your date input. The periods must be in chronological order (oldest period first).",
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Zeitperioden chronologisch aufeinander folgen (älteste Periode zuerst)."),
                             closable=True,
-                            scope="scope1")
+                            scope="scope_1")
         return ("", "")
     # Check if number of dates is even
     if len(data_lst_1) % 2:
         output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
                             closable=True,
-                            scope="scope1")
+                            scope="scope_1")
         return ("", "")
     # Check if dates have been entered consecutively
     for item in data_lst_2[1:]:
@@ -88,23 +95,28 @@ def check_form_incapacity(data):
             output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
                                     "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
                                 closable=True,
-                                scope="scope1")
+                                scope="scope_1")
             return ("", "")
 
-# Funtion to validate checkbox
-def check_tc(data):
-    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in data:
-        output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."
-                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
-                            closable=True,
-                            scope="scope1")
-        return ("", "")
-
-def check_box(data):
+# Validate trial from
+def check_trial(data):
     if len(data["workdays_input"]) < 1:
         output.put_error(lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mindestens einen Wochentag."),
                             closable=True,
-                            scope="scope1")
+                            scope="scope_1")
+        return ("", "")
+
+# Validate termination form
+def check_form_termination(data):
+    try: 
+        arrow.get(data["termination_dt"], "DD.MM.YYYY")
+    except:
+        return ("termination_dt", lang("ERROR: Please enter a valid date.", "ERROR: Bitte geben Sie ein gültiges Datum ein."))
+    if employment_sdt > arrow.get(data["termination_dt"], "DD.MM.YYYY"):
+        output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date. You entered the following start date: " + str(employment_sdt.format("DD.MM.YYYY")) ,
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen. Sie haben das folgende Startdatum eingetragen: " + str(employment_sdt.format("DD.MM.YYYY"))),
+                            closable=True,
+                            scope="scope_1")
         return ("", "")
 
 # Function to correct date subtraction if origin month has more days than target month
@@ -273,7 +285,7 @@ def main():
     output.put_markdown(lang("""# Work Incapacity Calculator""", """# Rechner Arbeitsunfähigkeit"""))
 
     # User info: Landing page
-    with output.use_scope("scope1"):
+    with output.use_scope("scope_1"):
         output.put_markdown(lang("""
             Were you incapacitated to work due to illness, accident, military service or pregnancy?
             Use this app to evaluate:
@@ -283,7 +295,7 @@ def main():
             - Sick pay claim
             - Validity of termination
 
-            Give it a try!
+            This app will lead you step by step - give it a try!
             ""","""
             Waren Sie wegen Krankheit, Unfall, Militärdienst oder Schwangerschaft arbeitsunfähig?
             Nutzen Sie diese App um Ihren Fall auszuwerten:
@@ -293,14 +305,14 @@ def main():
             - Ansprucha uf Lohnfortzahlung
             - Gültigkeit einer Kündigung
 
-            Probieren Sie es aus!
+            Diese App wird Sie schrittweise durch den Prozess führen - versuchen Sie es!
             """)).style('margin-top: 20px')
 
         output.put_markdown(lang("""
             ----
             **This app is currently undergoing beta testing. Any [Feedback](mailto:rm@llq.ch) is appreciated.**
             
-            The following case combinations **cannot** be evaluated:
+            The following case combinations **cannot** be evaluated (yet):
             - Temporary employment
             - The combination of different kinds of incapacities (e.g. military service and sickness)
             - More than three separate incapacities due to illness or accidents
@@ -309,7 +321,7 @@ def main():
             ----
             **Diese App befindet sich derzeit im Betatest. [Feedback](mailto:rm@llq.ch) ist sehr wilkommen.**
             
-            Die folgenden Fallkonstellationen können nicht ausgewertet werden:
+            Die folgenden Fallkonstellationen können (noch) nicht ausgewertet werden:
             - Befristete Arbeitsverhältnisse
             - Die Kombination von verschiedenartigen Arbeitsunfähigkeiten (bspw. Militärdienst und Krankheit)
             - Mehr als drei getrennte Arbeitsunfähigkeiten zufolge Unfall oder Krankheit
@@ -370,8 +382,13 @@ def main():
         options=[
             lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")],
         validate=check_tc)
+
+    with output.use_scope("scope_2"):
+        output.put_processbar("bar", init=0, scope="scope_2", position=0)
+        output.set_processbar("bar", 0.1)
+
     # User Info: Employment data (block required)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Employment
 
@@ -410,16 +427,17 @@ def main():
             name="workplace",
             type=input.TEXT,
             required=True),
-    ])
+    ], validate = check_form_employment)
     # Variables: Employment data (input required)
     # Make employment start date global for validation
     global employment_sdt
     employment_sdt = arrow.get(employment_data["employment_sdt"], "DD.MM.YYYY")
     workplace = employment_data["workplace"]
 
+    output.set_processbar("bar", 0.2)
 
     # User info: Case combinations (block required)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Case Combination
 
@@ -472,9 +490,10 @@ def main():
     if case.get("termination_occurence") == "No" or "Nein":
         termination_dt = arrow.now()
 
+    output.set_processbar("bar", 0.3)
 
     # User info: Amount of incapacities (block optional)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Amount of Incapacities
 
@@ -509,10 +528,14 @@ def main():
                 "value":3}
             ],
             required=True)
+    # Set to zero to handle conditions later
+    else:
+        illacc_amount = 0
 
+    output.set_processbar("bar", 0.4)
 
     # User info: Trial period (block optional)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Trial Period
 
@@ -554,14 +577,18 @@ def main():
                     name="trial_input",
                     type=input.TEXT,
                     required=True),
-        ], validate = check_box) 
+        ], validate = check_trial) 
         # Declare variables from trial period
         workdays_input = trial_period_data["workdays_input"]
         trial_input = trial_period_data["trial_input"]
 
+        output.set_processbar("bar", 0.5)
+
+    # Intiate incap dictionary
+    incap_dct = {}
 
     # User info: First illacc (alternate block)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Incapacity due to illness or accident
 
@@ -650,15 +677,14 @@ def main():
                 minlength="10",
                 placeholder="DD.MM.YYYY"),
             ], validate = check_form_incapacity)
-        # Initiate dict of illacc dates
-        incap_dct = {}
         # Sort dates into incap dict as list pairs on the first key
         incap_dct[1] = populate_dct(first_illacc_data)
 
+        output.set_processbar("bar", 0.6)
 
     # User input: Second illacc (block optional)
     if illacc_amount in [2, 3]:
-        second_illacc_data = input.input_group("Incapacity 2", "Arbeitsunfähgkeit 2", [
+        second_illacc_data = input.input_group(lang("Incapacity 2", "Arbeitsunfähgkeit 2"), [
             input.input(
                 lang(
                     "Start date of first period",
@@ -689,7 +715,8 @@ def main():
                 type=input.TEXT,
                 pattern="[0-9]{2}\.[0-9]{2}\.(19|20)\d{2}$",
                 maxlength="10",
-                minlength="10"),
+                minlength="10",
+                placeholder="DD.MM.YYYY"),
             input.input(
                 lang(
                     "End date of second period",
@@ -724,9 +751,11 @@ def main():
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[2] = populate_dct(second_illacc_data)
 
+        output.set_processbar("bar", 0.7)
+
     # User input: Third illacc (block optional)
     if illacc_amount in [3]:
-        third_illacc_data = input.input_group("Incapacity 3", "Arbeitsunfähgkeit 3", [
+        third_illacc_data = input.input_group(lang("Incapacity 3", "Arbeitsunfähgkeit 3"), [
             input.input(
                 lang(
                     "Start date of first period",
@@ -793,10 +822,10 @@ def main():
         # Sort dates into incap dict as list pairs on the second key
         incap_dct[3] = populate_dct(third_illacc_data)
 
-
+        output.set_processbar("bar", 0.8)
 
     # User info: Milservice (alternate block)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Militar or Civil Service - Details
 
@@ -812,6 +841,7 @@ def main():
             Hinweise:
             -
             """))
+
 
     # User input: Milservice (alternate block)
     if incapacity_type == "milservice":
@@ -843,10 +873,10 @@ def main():
         # Variables: Milservice
         incap_dct[1] = [arrow.get(milservice_data["milservice_sdt"], "DD.MM.YYYY"), arrow.get(milservice_data["milservice_edt"], "DD.MM.YYYY")]
 
-
+        output.set_processbar("bar", 0.8)
 
     # User info: Pregnancy
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Pregnancy - Details
 
@@ -895,9 +925,10 @@ def main():
         # Variables: Pregnancy
         incap_dct[1] = [arrow.get(preg_data["preg_sdt"], "DD.MM.YYYY"), arrow.get(preg_data["preg_edt"], "DD.MM.YYYY")]
 
+        output.set_processbar("bar", 0.8)
 
     # User info: Termination (block optional)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Termination
 
@@ -915,7 +946,7 @@ def main():
             """))
 
     # User input: Termination (block optional)
-    if case.get("termination_occurence") == "Yes" or "Ja":
+    if termination_occurence == ("Yes" or "Ja"):
         termination_data = input.input_group("", [
             # Date of termination
             input.input(
@@ -973,9 +1004,10 @@ def main():
         notice_period_input = termination_data["notice_period_input"]
         endpoint = termination_data["endpoint"]
 
+        output.set_processbar("bar", 0.9)
 
     # User info: Trial termination (block optional)
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown(lang("""
             ### Trial Termination
 
@@ -1012,6 +1044,7 @@ def main():
         # Variables: Trial termination
         trial_notice_input = termination_data["trial_notice_input"]
 
+        output.set_processbar("bar", 1)
 
 
     # --- DECLARE KNOWN VARIABLES, LISTS, DICTS --- #
@@ -1150,6 +1183,9 @@ def main():
                     elif syears[5].is_between(incap_sublst[0], incap_sublst[1], "[)"):
                         crossed_syear = 5
                         new_embargo_cap = 179
+                    else:
+                        crossed_syear = 0
+                        new_embargo_cap = 0
 
                     # Split embargo period if seniority threshold is crossed during embargo period
                     # Put split embargo periods into dict key 11, 12, 13...
@@ -1589,7 +1625,13 @@ def main():
     # Increase max width for visualization
     session.set_env(output_max_width="1080px")
 
-    with output.use_scope("scope1", clear=True):
+    with output.use_scope("scope_1", clear=True):
+        output.put_markdown(lang("Preparing your results. Please wait.", "Ergebnisse werden berechnet. Bitte warten Sie einen Moment."))
+    with output.use_scope("scope_2", clear=True):
+        with output.put_loading():
+            time.sleep(1)
+
+    with output.use_scope("scope_1", clear=True):
         output.put_markdown("""## Input"""), None,
         output.put_table([
         [lang("Event", "Ereignis"), lang("Date", "Datum")],

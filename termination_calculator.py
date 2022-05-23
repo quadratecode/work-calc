@@ -200,7 +200,6 @@ def populate_dct(in_dct):
         value_lst = value_lst[2:]
     return paired_lst
 
-
 # Function to check if a given date is a holiday
 # Source: https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf
 def holiday_checker(day, workplace):
@@ -1063,8 +1062,11 @@ def main():
     # List with seniority thresholds
     # Create correponding sick pay dict
     syears = []
+    sick_pay_dct = {}
     for i in range(0,35):
         syears.append(employment_sdt.shift(years=i))
+        # Populate sick pay dict with emtpy lists (used later)
+        sick_pay_dct[i] = []
 
     # Empty lists
     notice_period_lst = []
@@ -1078,7 +1080,6 @@ def main():
 
     # Empty dicts
     embargo_dct = {}
-    sick_pay_dct = {}
 
     # Gather weekday numbers from user input
     # Source: https://stackoverflow.com/a/70202124/14819955
@@ -1155,12 +1156,16 @@ def main():
         # Loop through incapacities by incapacity
         for key, value in embargo_dct.items():
 
-            # Keep score of embargo days
+            # Keep score of embargo days for each incap
             embargo_cap = 29 # lowest
             embargo_claimed = 0
 
             # Iterate over sublists
             for embargo_sublst in value:
+
+                # Skip empty lists
+                if embargo_sublst == []:
+                    continue
 
                 # Only check new lists, skip other lists
                 if embargo_sublst in embargo_negative:
@@ -1296,6 +1301,17 @@ def main():
             notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_overlap)) # end date
             single_date(notice_period_lst, 2, 3)
 
+            # Evaluate overlap again with missed period
+            notice_overlap = 0
+            for key, value in embargo_dct.items():
+                for embargo_sublst in value:
+                    if embargo_sublst != []:
+                        notice_overlap += overlap_calc(notice_period_lst[2], embargo_sublst[0], notice_period_lst[3], embargo_sublst[1])
+
+            # Shift end date again if required
+            notice_period_lst[3] = notice_period_lst[3].shift(days=notice_overlap)
+            single_date(notice_period_lst, 2, 3)
+
             # Create extension if needed
             if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
                 extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
@@ -1334,6 +1350,10 @@ def main():
     for key, value in incap_dct.items():
         for incap_sublst in value:
 
+            # Skip empty lists
+            if incap_sublst == []:
+                continue
+
             sickpay_sublst_1 = incap_sublst
             sickpay_sublst_2 = []
             
@@ -1349,53 +1369,60 @@ def main():
 
             # Compare seniority at start and end, split if not the same
             # Group into dict according to start year
-            if sick_pay_syear_start_index != sick_pay_syear_end_index: # in the same year
+            if sick_pay_syear_start_index != sick_pay_syear_end_index: # not in the same year
+                # Cap first period a day before syear
+                sickpay_sublst_1[1] = min(sickpay_sublst_1[1], syears[sick_pay_syear_end_index].shift(days=-1))
                 # Split period after syear
                 sickpay_sublst_2.insert(0, syears[sick_pay_syear_end_index])
                 sickpay_sublst_2.insert(1, sickpay_sublst_1[1])
-                # Cap first period a day before syear
-                sickpay_sublst_1[1] = min(sickpay_sublst_1[1], syears[sick_pay_syear_end_index].shift(days=-1))
                 # Sort second period into dict
-                sick_pay_dct[sick_pay_syear_start_index].append(sickpay_sublst_2)
+                sick_pay_dct[sick_pay_syear_end_index].append(sickpay_sublst_2)
 
             # Sort first period into dict
             sick_pay_dct[sick_pay_syear_start_index].append(sickpay_sublst_1)
-            
-    
+
     # Loop through incapacities according to year
     for key, value in sick_pay_dct.items():
 
         # Keep score of sick pay for each year
-        sick_pay_balance = 0
-        sick_pay_cap = 0
+        sick_pay_cap = 21 # lowest
+        sick_pay_claimed = 0
 
+        # Iterate over sublists
         for sickpay_sublst in value:
-            if sick_pay_balance <= sick_pay_cap:
 
-                # Calculate sick pay according to service year
-                if sickpay_sublst[0] < syears[1]:
-                    sickpay_sublst[1].shift(weeks=+3, days=-1)
-                    sick_pay_cap = 21
-                else:
-                    sickpay_sublst[1].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1)
-                    sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[1])
+            # Skip empty lists
+            if sickpay_sublst == []:
+                continue
 
-                # Cap sick pay end date
-                sick_pay_dct[1] = clamp(sickpay_sublst[1], sickpay_sublst[0], min(new_employment_edt, incap_sublst[-1]))
+            # Skip sick pay after end of employment
+            if sickpay_sublst[1] > new_employment_edt:
+                sickpay_sublst.clear() # Clear list
 
-                sublist_sick_pay_dur = period_duration(sickpay_sublst[1], sickpay_sublst[0])
+            if sick_pay_claimed >= sick_pay_cap:
+                sickpay_sublst.clear() # Clear list
 
-                sick_pay_balance = sick_pay_balance + sublist_sick_pay_dur
+            # Calculate sick pay according to service year
+            if sickpay_sublst[0] < syears[1]:
+                sickpay_sublst[1].shift(weeks=+3, days=-1)
+                sick_pay_cap = 21
+            else:
+                sickpay_sublst[1].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1)
+                sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
-                # Shift back if cap is exceeded
-                if  sick_pay_balance > sick_pay_cap:
-                    sick_pay_dct[1].shift(days=-sick_pay_balance-sick_pay_cap)
+            # Cap sick pay at employment end
+            sickpay_sublst[1] = min(sickpay_sublst[1], new_employment_edt)
 
-                # Count sick pay duration
-                sublist_sick_pay_dur = period_duration(sickpay_sublst[1], sickpay_sublst[0])
+            # Count used sick days
+            sick_pay_claimed += period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
-                # Keep score of used sick pay days
-                sick_pay_balance = sick_pay_balance + sublist_sick_pay_dur
+            # Shift back end of sick pay
+            if sick_pay_claimed > sick_pay_cap:
+                sick_pay_delta = sick_pay_claimed - sick_pay_cap
+                sickpay_sublst[1].shift(days=-sick_pay_delta)
+
+            # Count sick pay duration
+            sick_pay_claimed = period_duration(sickpay_sublst[1], sickpay_sublst[0])
 
 
     # --- EVALUATION --- #
@@ -1508,12 +1535,13 @@ def main():
 
     # --- VISUALIZATION - DATA INPUT --- #
 
-    df = pd.DataFrame([])
+    df = pd.DataFrame()
 
     # Insert sick pay dict into dataframe
     for key, value in sick_pay_dct.items():
         for sickpay_sublst in value:
-            df.append(task=lang("Sick Pay", "Lohnfortzahlung"), start=sickpay_sublst[0], end=sickpay_sublst[1], stack="stack_2", color="#f032e6")
+            df_new_row = pd.DataFrame(task=lang("Sick Pay", "Lohnfortzahlung"), start=sickpay_sublst[0], end=sickpay_sublst[1], stack="stack_2", color="#f032e6")
+            pd.concat([df, df_new_row])
 
     # Insert trial period into dataframe
     df.append(Task=lang("Probation Period", "Probezeit"), Start=check_index(trial_lst, 0), End=check_index(trial_lst, 1), Stack="f58231")
@@ -1685,10 +1713,10 @@ def main():
         ])
 
         for key, value in sick_pay_dct:
-            for sick_pay_sublst in value:
-                incap_output_sdt = incap_output_sdt.append(sick_pay_sublst[0])
-                incap_output_edt = incap_output_edt.append(sick_pay_sublst[1])
-                sick_pay_period_dur = str(period_duration(sick_pay_sublst[0], sick_pay_sublst[1]))
+            for sickpay_sublst in value:
+                incap_output_sdt = incap_output_sdt.append(sickpay_sublst[0])
+                incap_output_edt = incap_output_edt.append(sickpay_sublst[1])
+                sick_pay_period_dur = str(period_duration(sickpay_sublst[0], sickpay_sublst[1]))
 
         # Plotly output to PyWebIO
         plotly_html = fig.to_html(include_plotlyjs="require", full_html=False, config=config)

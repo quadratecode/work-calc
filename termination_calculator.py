@@ -369,11 +369,15 @@ def main():
         output.put_markdown(lang("""
             ### Terms and Conditions
 
-            This app is provided "as is" and free of charge. Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
+            This app is provided "as is". Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
+            
+            Usage is free of charge. No personal data is saved.
             ""","""
             ### Nutzungsbedingungen
 
             Diese App wird im Ist-Zustand und kostenlos zur Verfügung gestellt. Die Nutzung erfolgt auf eigene Gefahr und unter Ausschluss jeglicher Haftung, soweit gesetzlich zulässig. Verlassen Sie sich nicht ausschliesslich auf das automatisch generierte Ergebnis.
+            
+            Die Nutzung dieser App ist kostenlos. Es werden keine persönlichen Daten gespeichert.
             """))
     
     # Terms and conditions
@@ -1059,10 +1063,8 @@ def main():
     # List with seniority thresholds
     # Create correponding sick pay dict
     syears = []
-    sick_pay_dct = {}
     for i in range(0,35):
         syears.append(employment_sdt.shift(years=i))
-        sick_pay_dct[i] = []
 
     # Empty lists
     notice_period_lst = []
@@ -1076,7 +1078,7 @@ def main():
 
     # Empty dicts
     embargo_dct = {}
-    embargo_dct_2 = {}
+    sick_pay_dct = {}
 
     # Gather weekday numbers from user input
     # Source: https://stackoverflow.com/a/70202124/14819955
@@ -1150,77 +1152,85 @@ def main():
     # Selected case type
     if incapacity_type == "illacc":
 
-        # --- EMBARGO PERIODS --- #
-
         # Loop through incapacities by incapacity
         for key, value in embargo_dct.items():
 
             # Keep score of embargo days
-            embargo_cap = 0
+            embargo_cap = 29 # lowest
             embargo_claimed = 0
-            embargo_unclaimed = 29 # lowest
 
+            # Iterate over sublists
             for embargo_sublst in value:
-                if embargo_unclaimed > 0:
-                    if embargo_sublst not in embargo_negative:
 
-                        # Continue with next iteration if incapacitiy start date lies before the beginning of employment, delete sublist
-                        if reg_employment_lst[0] >= embargo_sublst[1]:
-                            value.remove(embargo_sublst) # Remove list
-                            break
+                # Only check new lists, skip other lists
+                if embargo_sublst in embargo_negative:
+                    continue
 
-                        # Set embargo cap according to seniority at beginning of incapacity
-                        if embargo_sublst[0] < syears[1]:
-                            embargo_cap = 29 # cap at 29 days incl. start and end date
-                        elif embargo_sublst[0] >= syears[5]:
-                            embargo_cap = 179 # cap at 179 days incl. start and end date
-                        else:
-                            embargo_cap = 89 # cap at 90 days incl. start and end date
+                # Delete lists after limit is reached
+                if embargo_claimed >= embargo_cap:
+                    embargo_sublst.clear() # Clear list
 
-                        # Set embargo unclaimed
-                        embargo_unclaimed = embargo_cap - embargo_claimed
+                # Continue with next iteration if incapacitiy start date lies before the beginning of employment, empty sublist
+                if reg_employment_lst[0] >= embargo_sublst[1]:
+                    embargo_sublst.clear() # Clear list
+                    continue
 
-                        # Set embargo start date
-                        embargo_sublst[0] = max(reg_employment_lst[0], embargo_sublst[0]) # starts on reg employment at the earliest
-
-                        # Check if service year 1, 5 is crossed during embargo period
-                        if syears[1].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
-                            crossed_syear = 1
-                            new_embargo_cap = 89
-                        elif syears[5].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
-                            crossed_syear = 5
-                            new_embargo_cap = 179
-                        else:
-                            # Set embargo end date into embargo dict, max date after cap is reached
-                            embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), embargo_sublst[1])
-                            # Count used days
-                            embargo_claimed = period_duration(embargo_sublst[0], embargo_sublst[1])
-                            # Skip syear cleanup
-                            crossed_syear = 0
-                            new_embargo_cap = 0
-
-                        # Split embargo period if seniority threshold is crossed during embargo period
-                        # Put split embargo periods into dict key 11, 12, 13...
-                        if crossed_syear != 0:
-                        
-                            # Set end of first period, max one day before syear change
-                            embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), syears[crossed_syear].shift(days=-1))
-                            # Calculate used balance
-                            embargo_claimed = period_duration(embargo_sublst[0], embargo_sublst[1])
-                            
-                            # Insert
-                            new_embargo_sublist = []
-                            value.insert((value.index(embargo_sublst) + 1), new_embargo_sublist)
-                            # Set start of second period at syear change
-                            new_embargo_sublist.insert(0, syears[crossed_syear])
-                            # Set end of second period
-                            new_embargo_sublist.insert(1, min(new_embargo_sublist[0].shift(days=(new_embargo_cap - embargo_claimed)), embargo_sublst[1]))
-                            # Add to negative list to test against
-                            embargo_negative.append(new_embargo_sublist)
-                            # Count used days
-                            embargo_claimed = period_duration(embargo_sublst[0], embargo_sublst[1]) + period_duration(new_embargo_sublist[0], new_embargo_sublist[1])
+                # Set embargo cap according to seniority at beginning of incapacity
+                if embargo_sublst[0] < syears[1]:
+                    embargo_cap = 29 # cap at 29 days incl. start and end date
+                elif embargo_sublst[0] >= syears[5]:
+                    embargo_cap = 179 # cap at 179 days incl. start and end date
                 else:
-                    value.remove(embargo_sublst) # Remove list
+                    embargo_cap = 89 # cap at 90 days incl. start and end date
+
+                # Count unclaimed days
+                embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))
+
+                # Set embargo start date
+                embargo_sublst[0] = max(reg_employment_lst[0], embargo_sublst[0]) # starts on reg employment at the earliest
+
+                # Check if service year 1, 5 is crossed during embargo period, adjust embargo cap
+                if syears[1].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
+                    crossed_syear = 1
+                    embargo_cap = 89
+                elif syears[5].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
+                    crossed_syear = 5
+                    embargo_cap = 179
+                else:
+                    # Set embargo end date into embargo dict, max date after cap is reached
+                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), embargo_sublst[1])
+                    # Count used days
+                    embargo_claimed = period_duration(embargo_sublst[0], embargo_sublst[1])
+                    # Skip syear cleanup
+                    crossed_syear = 0
+
+                # Split embargo period if seniority threshold is crossed during embargo period
+                # Put split embargo periods into dict key 11, 12, 13...
+                if crossed_syear != 0:
+                
+                    # Save original end date
+                    save_date = embargo_sublst[1]
+                    # Set end of first period, max one day before syear change
+                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), syears[crossed_syear].shift(days=-1))
+                    # Calculate used balance
+                    embargo_claimed += period_duration(embargo_sublst[0], embargo_sublst[1])
+                    # Count unclaimed days
+                    embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))
+
+                    # Insert new list
+                    new_embargo_sublist = []
+                    value.insert((value.index(embargo_sublst) + 1), new_embargo_sublist)
+                    # Set start of second period at syear change
+                    new_embargo_sublist.insert(0, syears[crossed_syear])
+                    # Set end of second period
+                    new_embargo_sublist.insert(1, min(new_embargo_sublist[0].shift(days=(embargo_unclaimed)), save_date))
+                    # Add to negative list to test against
+                    embargo_negative.append(new_embargo_sublist)
+                    # Count used days
+                    embargo_claimed += period_duration(new_embargo_sublist[0], new_embargo_sublist[1])
+            
+                # Count unclaimed days
+                embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))              
 
 
     # --- CASE: MILITARY OR CIVIL SERVICE --- #
@@ -1272,31 +1282,32 @@ def main():
 
         # Calculate new employment end date
         new_employment_edt = notice_period_lst[-1]
-    else:
-        new_employment_edt = termination_dt
 
-    # Calculate notice overlaop
-    notice_overlap = 0
-    for key, value in embargo_dct.items():
-        for embargo_sublst in value:
-            notice_overlap = notice_overlap + overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
+        # Calculate notice overlaop
+        notice_overlap = 0
+        for key, value in embargo_dct.items():
+            for embargo_sublst in value:
+                if embargo_sublst != []:
+                    notice_overlap += overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
 
-    # Shift missed notice period days, start and end date
-    # Calculated under case types
-    if notice_overlap != 0:
-        notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1)) # start date
-        notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_overlap)) # end date
-        single_date(notice_period_lst, 2, 3)
+        # Shift missed notice period days, start and end date
+        if notice_overlap != 0:
+            notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1)) # start date
+            notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_overlap)) # end date
+            single_date(notice_period_lst, 2, 3)
 
-        # Create extension if needed
-        if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
-            extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
-            extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
-            single_date(extension_lst, 0, 1)
-            new_employment_edt = extension_lst[-1]
-        else:
-            new_employment_edt = notice_period_lst[-1]
+            # Create extension if needed
+            if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
+                extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
+                extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
+                single_date(extension_lst, 0, 1)
+                new_employment_edt = extension_lst[-1]
+            else:
+                new_employment_edt = notice_period_lst[-1]
 
+    # Set termination date to regular employment endt date if no termination date was given
+    else: 
+        new_employment_edt = reg_employment_lst[1]
 
     # --- SICK PAY --- #
 
@@ -1350,14 +1361,16 @@ def main():
             # Sort first period into dict
             sick_pay_dct[sick_pay_syear_start_index].append(sickpay_sublst_1)
             
-    # Keep score of sick pay for each year
-    sick_pay_balance = 0
-    sick_pay_cap = 0
     
     # Loop through incapacities according to year
     for key, value in sick_pay_dct.items():
+
+        # Keep score of sick pay for each year
+        sick_pay_balance = 0
+        sick_pay_cap = 0
+
         for sickpay_sublst in value:
-            while sick_pay_balance <= sick_pay_cap:
+            if sick_pay_balance <= sick_pay_cap:
 
                 # Calculate sick pay according to service year
                 if sickpay_sublst[0] < syears[1]:

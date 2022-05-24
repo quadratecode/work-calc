@@ -490,7 +490,7 @@ def main():
     termination_occurence = case["termination_occurence"]
     # Set end of seniority to today if no termination was issued
     if case.get("termination_occurence") == "No" or "Nein":
-        termination_dt = arrow.now()
+        termination_dt = arrow.now().shift(years=+2)
 
     output.set_processbar("bar", 0.3)
 
@@ -1083,65 +1083,69 @@ def main():
     # Empty dicts
     embargo_dct = {}
 
-    # Gather weekday numbers from user input
-    # Source: https://stackoverflow.com/a/70202124/14819955
-    weekday_mapping = {day: index for index, day in enumerate((
-    "Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"))}
-    for weekday in workdays_input:
-        workdays_num.append(weekday_mapping.get(weekday, weekday))
-
-
     # --- TRIAL PERIOD --- #
 
     # Check if user selected trial period evaluation
-    if (trial_relevance != ("No" or "Nein")) or (trial_input != ("No probation period" or "Keine Probezeit")):
+    if (trial_relevance != ("No" or "Nein")):
+        if trial_input != ("No probation period" or "Keine Probezeit"):
 
-        # Extract probation period duration from user input
-        if trial_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
-            trial_dur = 1
-        else:
-            trial_dur = int(trial_input)
+            # Gather weekday numbers from user input
+            # Source: https://stackoverflow.com/a/70202124/14819955
+            weekday_mapping = {day: index for index, day in enumerate((
+            "Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"))}
+            for weekday in workdays_input:
+                workdays_num.append(weekday_mapping.get(weekday, weekday))
 
-        # Calculate probation period end date
-        trial_lst.insert(1, min(trial_lst[0].shift(months=+trial_dur), termination_dt)) # BGer 4C.45/2004
-        trial_lst[1] = subtract_corr(trial_lst[0], trial_lst[1])
 
-        # Assume no trial extension
-        trial_extension = 0
-        # Check if any incapacity date lies within probation period
-        for key, value in incap_dct.items():
-                for incap_sublst in value:
-                    if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
-                        trial_extension = 1
+            # Extract probation period duration from user input
+            if trial_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
+                trial_dur = 1
+            else:
+                trial_dur = int(trial_input)
 
-        if trial_extension == 1:
+            # Calculate probation period end date
+            trial_lst.insert(1, min(trial_lst[0].shift(months=+trial_dur), termination_dt)) # BGer 4C.45/2004
+            trial_lst[1] = subtract_corr(trial_lst[0], trial_lst[1])
+
+            # Assume no trial extension
+            trial_extension = 0
+            # Check if any incapacity date lies within probation period
             for key, value in incap_dct.items():
-                for incap_sublst in value:
-                    
-                    # Gather future holidays for 2 years
-                    for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
-                        if holiday_checker(day, workplace) == True:
-                            holidays.append(day)
-                                    
-                    # Gather working days during probation period
-                    for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
-                        # Add date to list if it is a working day, not a holiday and not already in the list
-                        if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
-                            missed_workdays.append(day)
+                    for incap_sublst in value:
+                        if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
+                            trial_extension = 1
 
-                    # Gather working days during probation period extension and match against amount of missed working days
-                    for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
-                        if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
-                            repeated_workdays.append(day)
+            if trial_extension == 1:
+                for key, value in incap_dct.items():
+                    for incap_sublst in value:
+                        
+                        # Gather future holidays for 2 years
+                        for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
+                            if holiday_checker(day, workplace) == True:
+                                holidays.append(day)
+                                        
+                        # Gather working days during probation period
+                        for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
+                            # Add date to list if it is a working day, not a holiday and not already in the list
+                            if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
+                                missed_workdays.append(day)
 
-                    # Set extension end date
-                    trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
-                    
-        # Shift regular employment start date to after trial period
-        reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
+                        # Gather working days during probation period extension and match against amount of missed working days
+                        for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
+                            if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
+                                repeated_workdays.append(day)
 
-        # Count probation period extension
-        trial_extension_dur = len(repeated_workdays)
+                        # Set extension end date
+                        trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
+                        
+            # Shift regular employment start date to after trial period
+            reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
+
+            # Count probation period extension
+            trial_extension_dur = len(repeated_workdays)
+    else:
+        trial_extension_dur = 0
+
 
     # --- GENERAL INCAPACITY --- #
 
@@ -1153,12 +1157,15 @@ def main():
     # Selected case type
     if incapacity_type == "illacc":
 
+        # Keep score of total
+        embargo_claimed_total = 0
         # Loop through incapacities by incapacity
         for key, value in embargo_dct.items():
 
             # Keep score of embargo days for each incap
-            embargo_cap = 29 # lowest
-            embargo_claimed = 0
+            embargo_cap_loop = 29 # start with lowest
+            embargo_claimed_loop = 0
+            embargo_unclaimed_loop = 0
 
             # Iterate over sublists
             for embargo_sublst in value:
@@ -1171,25 +1178,24 @@ def main():
                 if embargo_sublst in embargo_negative:
                     continue
 
-                # Delete lists after limit is reached
-                if embargo_claimed >= embargo_cap:
-                    embargo_sublst.clear() # Clear list
-
                 # Continue with next iteration if incapacitiy start date lies before the beginning of employment, empty sublist
                 if reg_employment_lst[0] >= embargo_sublst[1]:
                     embargo_sublst.clear() # Clear list
                     continue
 
+                if embargo_claimed_loop >= embargo_cap_loop:
+                    embargo_sublst.clear()
+
                 # Set embargo cap according to seniority at beginning of incapacity
                 if embargo_sublst[0] < syears[1]:
-                    embargo_cap = 29 # cap at 29 days incl. start and end date
+                    embargo_cap_loop = 29 # cap at 29 days incl. start and end date
                 elif embargo_sublst[0] >= syears[5]:
-                    embargo_cap = 179 # cap at 179 days incl. start and end date
+                    embargo_cap_loop = 179 # cap at 179 days incl. start and end date
                 else:
-                    embargo_cap = 89 # cap at 90 days incl. start and end date
+                    embargo_cap_loop = 89 # cap at 90 days incl. start and end date
 
                 # Count unclaimed days
-                embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))
+                embargo_unclaimed_loop = max(0, (embargo_cap_loop - embargo_claimed_loop))
 
                 # Set embargo start date
                 embargo_sublst[0] = max(reg_employment_lst[0], embargo_sublst[0]) # starts on reg employment at the earliest
@@ -1197,15 +1203,15 @@ def main():
                 # Check if service year 1, 5 is crossed during embargo period, adjust embargo cap
                 if syears[1].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
                     crossed_syear = 1
-                    embargo_cap = 89
+                    embargo_cap_loop = 89
                 elif syears[5].is_between(embargo_sublst[0], embargo_sublst[1], "[)"):
                     crossed_syear = 5
-                    embargo_cap = 179
+                    embargo_cap_loop = 179
                 else:
                     # Set embargo end date into embargo dict, max date after cap is reached
-                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), embargo_sublst[1])
+                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed_loop), embargo_sublst[1])
                     # Count used days
-                    embargo_claimed = period_duration(embargo_sublst[0], embargo_sublst[1])
+                    embargo_claimed_loop = period_duration(embargo_sublst[0], embargo_sublst[1])
                     # Skip syear cleanup
                     crossed_syear = 0
 
@@ -1214,13 +1220,13 @@ def main():
                 if crossed_syear != 0:
                 
                     # Save original end date
-                    save_date = embargo_sublst[1]
+                    save_date_embargo_split = embargo_sublst[1]
                     # Set end of first period, max one day before syear change
-                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed), syears[crossed_syear].shift(days=-1))
+                    embargo_sublst[1] = min(embargo_sublst[0].shift(days=embargo_unclaimed_loop), syears[crossed_syear].shift(days=-1))
                     # Calculate used balance
-                    embargo_claimed += period_duration(embargo_sublst[0], embargo_sublst[1])
+                    embargo_claimed_loop += period_duration(embargo_sublst[0], embargo_sublst[1])
                     # Count unclaimed days
-                    embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))
+                    embargo_unclaimed_loop = max(0, (embargo_cap_loop - embargo_claimed_loop))
 
                     # Insert new list
                     new_embargo_sublist = []
@@ -1228,14 +1234,15 @@ def main():
                     # Set start of second period at syear change
                     new_embargo_sublist.insert(0, syears[crossed_syear])
                     # Set end of second period
-                    new_embargo_sublist.insert(1, min(new_embargo_sublist[0].shift(days=(embargo_unclaimed)), save_date))
+                    new_embargo_sublist.insert(1, min(new_embargo_sublist[0].shift(days=(embargo_unclaimed_loop)), save_date_embargo_split))
                     # Add to negative list to test against
                     embargo_negative.append(new_embargo_sublist)
                     # Count used days
-                    embargo_claimed += period_duration(new_embargo_sublist[0], new_embargo_sublist[1])
+                    embargo_claimed_loop += period_duration(new_embargo_sublist[0], new_embargo_sublist[1])
             
-                # Count unclaimed days
-                embargo_unclaimed = max(0, (embargo_cap - embargo_claimed))              
+                # Count claimed total of days
+                embargo_claimed_total += embargo_claimed_loop
+                    
 
 
     # --- CASE: MILITARY OR CIVIL SERVICE --- #
@@ -1265,7 +1272,7 @@ def main():
     # --- TERMINATION AND NOTICE PERIOD --- #
 
     # Check if user selected termination evaluation
-    if termination_occurence == "Yes" or "Ja":
+    if termination_occurence == ("Yes" or "Ja"):
 
         # Legal minimum notice period according to seniority
         if notice_period_input in ["No mention of notice period", "Keine Angaben zur Kündigungsfrist"]:
@@ -1333,6 +1340,7 @@ def main():
 
     # Set termination date to regular employment endt date if no termination date was given
     else: 
+        notice_overlap = 0
         new_employment_edt = reg_employment_lst[1]
 
     # --- SICK PAY --- #
@@ -1368,7 +1376,7 @@ def main():
             if employment_sdt.shift(months=3) >= incap_sublst[1]:
                 continue
 
-            sickpay_sublst_1 = incap_sublst
+            sickpay_sublst_1 = copy.deepcopy(incap_sublst)
             sickpay_sublst_2 = []
             
             # Define sick pay start date max 3 months into employment
@@ -1384,23 +1392,28 @@ def main():
             # Compare seniority at start and end, split if not the same
             # Group into dict according to start year
             if sick_pay_syear_start_index != sick_pay_syear_end_index: # not in the same year
+                # Hold original enddate
+                save_date_sick_pay_split = sickpay_sublst_1[1]
                 # Cap first period a day before syear
                 sickpay_sublst_1[1] = min(sickpay_sublst_1[1], syears[sick_pay_syear_end_index].shift(days=-1))
                 # Split period after syear
                 sickpay_sublst_2.insert(0, syears[sick_pay_syear_end_index])
-                sickpay_sublst_2.insert(1, sickpay_sublst_1[1])
-                # Sort second period into dict
+                sickpay_sublst_2.insert(1, save_date_sick_pay_split)
+                # Sort second period into dict according to syear
                 sickpay_dct[sick_pay_syear_end_index].append(sickpay_sublst_2)
 
-            # Sort first period into dict
+            # Sort first period into dict according to syear
             sickpay_dct[sick_pay_syear_start_index].append(sickpay_sublst_1)
 
-    # Loop through incapacities according to year
+    # Keep score of total
+    sick_pay_claimed_total = 0
+    # Loop through incapacities according to syear
     for key, value in sickpay_dct.items():
 
-        # Keep score of sick pay for each year
-        sick_pay_cap = 21 # lowest
-        sick_pay_claimed = 0
+        # Keep score of sick pay for each loop (year)
+        sick_pay_cap = 21 # start with lowest lowest
+        sick_pay_claimed_loop = 0
+        sick_pay_unclaimed_loop = 0
 
         # Iterate over sublists
         for sickpay_sublst in value:
@@ -1413,31 +1426,26 @@ def main():
             if sickpay_sublst[1] > new_employment_edt:
                 sickpay_sublst.clear() # Clear list
 
-            if sick_pay_claimed >= sick_pay_cap:
+            if sick_pay_claimed_loop >= sick_pay_cap:
                 sickpay_sublst.clear() # Clear list
 
             # Calculate sick pay according to service year
             if sickpay_sublst[0] < syears[1]:
-                sickpay_sublst[1].shift(weeks=+3, days=-1)
-                sick_pay_cap = 21
+                sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(weeks=+3, days=-1))
             else:
-                sickpay_sublst[1].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1)
-                sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[1])
+                sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
 
-            # Cap sick pay at employment end
-            sickpay_sublst[1] = min(sickpay_sublst[1], new_employment_edt)
+            # Calculate sick pay unclaimed
+            sick_pay_unclaimed_loop = sick_pay_cap - sick_pay_claimed_loop
+
+            # Calculate sick pay end date, cap sick pay at the earliest relevant occurence
+            sickpay_sublst[1] = min(sickpay_sublst[0].shift(days=+sick_pay_unclaimed_loop), sickpay_sublst[1], new_employment_edt)
 
             # Count used sick days
-            sick_pay_claimed += period_duration(sickpay_sublst[0], sickpay_sublst[1])
+            sick_pay_claimed_loop += period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
-            # Shift back end of sick pay
-            if sick_pay_claimed > sick_pay_cap:
-                sick_pay_delta = sick_pay_claimed - sick_pay_cap
-                sickpay_sublst[1].shift(days=-sick_pay_delta)
-
-            # Count sick pay duration
-            sick_pay_claimed = period_duration(sickpay_sublst[1], sickpay_sublst[0])
-
+            # Count total
+            sick_pay_claimed_total += sick_pay_claimed_loop
 
     # --- EVALUATION --- #
 
@@ -1449,7 +1457,7 @@ def main():
     # Standard case
     # Termination during prbation period
     if termination_occurence == ("No" or "Nein"):
-        termination_case = "no_termination"
+        termination_case = "no_case"
     elif (termination_occurence == ("Yes" or "Ja")) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
         termination_case = "trial_case"
     # Termination during embargo period
@@ -1508,7 +1516,7 @@ def main():
                     sickpay_sublst[1] = new_employment_edt
                 
                 # Recount sick pay balance
-                sick_pay_claimed += period_duration(sickpay_sublst[0], sickpay_sublst[1])
+                sick_pay_claimed_loop += period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
 
     # --- Termination case: TERMINATION DURING EMBARGO PERIOD --- #
@@ -1518,7 +1526,7 @@ def main():
         termination_validity = invalid_termination
         notice_period_lst.clear()
         notice_overlap = 0
-        reg_employment_lst[1] = reg_employment_lst[1].shift(years=+5) # showing that employment continues
+        reg_employment_lst[1] = reg_employment_lst[1].shift(years=+3) # showing that employment continues
         extension_lst.clear()
         new_employment_edt = ""
 
@@ -1563,16 +1571,41 @@ def main():
         output.put_table([
         [lang("Query", "Abfrage"), lang("Result", "Ergebnis")],
         [lang("Validity of Termination:", "Gültigkeit der Kündigung:"), str(termination_validity)],
-        [lang("End date of employment:", "Enddatum der Anstellung:"), notice_period_lst[1].format("DD.MM.YYYY")],
+        [lang("End date of employment:", "Enddatum der Anstellung:"), new_employment_edt.format("DD.MM.YYYY")],
         [lang("Total Trial Duration:", "Gesamtdauer Probezeit:"), str(trial_extension_dur) + lang(" days", " Tage")],
         [lang("Missed Calendar Days Notice Period:", "Verpasste Kalendertage Kündigungsfrist:"), str(notice_overlap) + lang(" days", " Tage")],
-        [lang("Total Embargo Duration:", "Gesamtdauer Sperrfrist:"), str(embargo_claimed) + lang(" days", " Tage")],
         ])
 
     with output.use_scope("scope_results_2"):
 
+        output.put_markdown(lang("""### Embargo""", """### Sperrfristen """)).style('margin-top: 20px'), None,
+        output.put_row([
+            output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
+            output.put_markdown(lang("""**Start**""", """**Start**""")),
+            output.put_markdown(lang("""**End**""", """**Ende**""")),
+            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
+
+    for key, value in embargo_dct.items():
+        # Count iterations
+        i = 0
+        for embargo_sublst in value:
+            if embargo_sublst != []:
+                output.put_row([
+                    output.put_text(str(key) + "//" + str(value.index(embargo_sublst))), None,
+                    output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
+                    output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
+                    output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")),
+                    ], scope="scope_results_2")
+                i += 1
+
+    with output.use_scope("scope_results_3"):
+
         output.put_markdown(lang("""### Sick Pay""", """### Lohnfortzahlung """)).style('margin-top: 20px'), None,
-        output.put_row([output.put_markdown(lang("""**Year / Period**""", """**Jahr / Periode**""")), output.put_markdown(lang("""**Start**""", """**Start**""")), output.put_markdown(lang("""**End**""", """**Ende**"""), output.put_markdown(lang("""**Duration**""", """**Dauer**""")))])
+        output.put_row([
+            output.put_markdown(lang("""**Year // Period**""", """**Jahr / Periode**""")),
+            output.put_markdown(lang("""**Start**""", """**Start**""")),
+            output.put_markdown(lang("""**End**""", """**Ende**""")),
+            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
 
     for key, value in sickpay_dct.items():
         # Count iterations
@@ -1580,13 +1613,25 @@ def main():
         for sickpay_sublst in value:
             if sickpay_sublst != []:
                 output.put_row([
-                    output.put_text(str(sickpay_sublst[0].year) + "-" + str(i)), None,
+                    output.put_text(str(sickpay_sublst[0].year) + "//" + str(i)), None,
                     output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1]))),
-                    ], scope="scope_results_2")
+                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")),
+                    ], scope="scope_results_3")
                 i += 1
-
+    
+    output.put_row([
+        output.put_text(), None,
+        output.put_text(""), None,
+        output.put_text(""), None,
+        output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")),
+        ], scope="scope_results_2")
+    output.put_row([
+        output.put_text(""), None,
+        output.put_text(""), None,
+        output.put_text(""), None,
+        output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")),
+        ], scope="scope_results_3")
 
 
     # --- OUTPUT VISUALIZATION - PREPARATION --- #
@@ -1727,6 +1772,17 @@ def main():
                 y="stack",
                 opacity=1,
                 color="task",
+                color_discrete_sequence=["#ffffff", # Placeholder
+                                         "#f032e6", # Sick Pay
+                                         "#f58231", # Probation Period
+                                         "#42d4f4", # Extension Probation Period
+                                         "#3cb44b", # Regular employment
+                                         "#000075", # Notice period
+                                         "#4363d8", # Compensation missed Notice Period
+                                         "#e6194B", # Embargo Period
+                                         "#911eb4", # Notice Period Extension
+                                         "#800000", # Incapacity 1
+                                         "#ffffff"], # Placeholder
                 width=1000,
                 height=700,
                 hover_name="task",
@@ -1747,7 +1803,7 @@ def main():
         barmode="overlay",
         xaxis = dict(
             automargin=True,
-            dtick="M1",
+            dtick="M12",
             tickformat="%d.%m.%Y",
             type="date",
             showgrid=True,

@@ -5,7 +5,6 @@ from dateutil.easter import *
 import arrow
 import plotly.express as px
 import pandas as pd
-import time
 
 #§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§#
 
@@ -29,7 +28,7 @@ import time
 # dass diese Lizenz dem schweizerischen Recht untersteht und der Gerichtsstand Zürich, Schweiz, ist.
 # Jegliche Weiterverbreitung muss die vorgenannten Bestimmungen beinhalten.
 
-# Zusammen mit diesem Code solten Sie eine Kopie der EUPL-1.2 erhalten haben.
+# Zusammen mit diesem Code sollten Sie eine Kopie der EUPL-1.2 erhalten haben.
 # Andernfalls siehe <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
 
 #§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§#
@@ -55,7 +54,7 @@ def check_tc(data):
         output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
                             closable=True,
-                            scope="scope_1")
+                            scope="scope_input")
         return ("", "")
 
 # Validate employment form
@@ -80,14 +79,14 @@ def check_form_incapacity(data):
         output.put_error(lang("ERROR: Please check your date input. The periods must be in chronological order (oldest period first).",
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Zeitperioden chronologisch aufeinander folgen (älteste Periode zuerst)."),
                             closable=True,
-                            scope="scope_1")
+                            scope="scope_input")
         return ("", "")
     # Check if number of dates is even
     if len(data_lst_1) % 2:
         output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
                             closable=True,
-                            scope="scope_1")
+                            scope="scope_input")
         return ("", "")
     # Check if dates have been entered consecutively
     for item in data_lst_2[1:]:
@@ -95,7 +94,7 @@ def check_form_incapacity(data):
             output.put_error(lang("ERROR: Please check your date input. The dates must be entered in pairs to form a period.",
                                     "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten für eine Periode müssen paarweise eingetragen werden."),
                                 closable=True,
-                                scope="scope_1")
+                                scope="scope_input")
             return ("", "")
 
 # Validate trial from
@@ -103,7 +102,7 @@ def check_trial(data):
     if len(data["workdays_input"]) < 1:
         output.put_error(lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mindestens einen Wochentag."),
                             closable=True,
-                            scope="scope_1")
+                            scope="scope_input")
         return ("", "")
 
 # Validate termination form
@@ -116,7 +115,7 @@ def check_form_termination(data):
         output.put_error(lang("ERROR: Please check your date input. The termination date cannot be older than the employment start date. You entered the following start date: " + str(employment_sdt.format("DD.MM.YYYY")) ,
                                 "ERROR: Bitte überprüfen Sie Ihre Eingabe. Das Kündigungsdatum kann nicht vor dem Startdatum liegen. Sie haben das folgende Startdatum eingetragen: " + str(employment_sdt.format("DD.MM.YYYY"))),
                             closable=True,
-                            scope="scope_1")
+                            scope="scope_input")
         return ("", "")
 
 # Function to correct date subtraction if origin month has more days than target month
@@ -283,7 +282,7 @@ def main():
     output.put_markdown(lang("""# Work Incapacity Calculator""", """# Rechner Arbeitsunfähigkeit"""))
 
     # User info: Landing page
-    with output.use_scope("scope_1"):
+    with output.use_scope("scope_input"):
         output.put_markdown(lang("""
             Were you incapacitated to work due to illness, accident, military service or pregnancy?
             Use this app to evaluate:
@@ -385,12 +384,12 @@ def main():
             lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")],
         validate=check_tc)
 
-    with output.use_scope("scope_2"):
-        output.put_processbar("bar", init=0, scope="scope_2", position=0)
+    with output.use_scope("scope_progress"):
+        output.put_processbar("bar", init=0, scope="scope_progress", position=0)
         output.set_processbar("bar", 0.1)
 
     # User Info: Employment data (block required)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Employment
 
@@ -439,7 +438,7 @@ def main():
     output.set_processbar("bar", 0.2)
 
     # User info: Case combinations (block required)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Case Combination
 
@@ -495,7 +494,7 @@ def main():
     output.set_processbar("bar", 0.3)
 
     # User info: Amount of incapacities (block optional)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Amount of Incapacities
 
@@ -537,7 +536,7 @@ def main():
     output.set_processbar("bar", 0.4)
 
     # User info: Trial period (block optional)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Trial Period
 
@@ -590,7 +589,7 @@ def main():
     incap_dct = {}
 
     # User info: First illacc (alternate block)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Incapacity due to illness or accident
 
@@ -827,7 +826,7 @@ def main():
         output.set_processbar("bar", 0.8)
 
     # User info: Milservice (alternate block)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Militar or Civil Service - Details
 
@@ -878,14 +877,15 @@ def main():
         output.set_processbar("bar", 0.8)
 
     # User info: Pregnancy
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Pregnancy - Details
 
-            Please specify on which the pregnancy commenced and on which date the child was born.
+            Please specify on which date the pregnancy commenced the date of confinement.
 
             Hints:
             - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised.
+            - Any natural termination of the pregnancy counts as confinement, including premature birth or miscarriage, not so abortions.
             - If the child has not yet been born, enter an approximate date.
             ""","""
             ### Schwangerschaft - Details
@@ -894,6 +894,7 @@ def main():
 
             Hinweise:
             - Das Bundesgericht hat in BGE 143 III 21 entschieden, dass die Schwangerschaft mit der Befruchtung der Eizelle beginnt.
+            - Als Niederkunft gilt jede natürliche Befreiung von der Schwangerschaft, d.h. auch Früh- oder Fehlgeburten, nicht aber Schwangerschaftsabbrüche.
             - Falls das Kind noch nicht geboren ist, geben Sie ein ungefähres Datum an.
             """))
 
@@ -930,7 +931,7 @@ def main():
         output.set_processbar("bar", 0.8)
 
     # User info: Termination (block optional)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Termination
 
@@ -1009,7 +1010,7 @@ def main():
         output.set_processbar("bar", 0.9)
 
     # User info: Trial termination (block optional)
-    with output.use_scope("scope_1", clear=True):
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown(lang("""
             ### Trial Termination
 
@@ -1242,14 +1243,24 @@ def main():
 
     # Selected case type
     if incapacity_type == "milservice":
-        print("still to be implemented")
+        for key, value in embargo_dct.items():
+            for embargo_sublst in value:
+                # Check if milservice duration was over 11 days
+                if embargo_sublst[0].shift(days=+11) < embargo_sublst[1]:
+                    # Set embargo start to 4 weeks prior
+                    embargo_sublst[0] = embargo_sublst[0].shift(weeks=-4)
+                    # Set embargo end to 4 weeks after
+                    embargo_sublst[1] = embargo_sublst[1].shift(weeks=-4)
 
 
     # --- CASE: PREGNANCY --- #
 
     # Selected case type
     if incapacity_type == "preg":
-        print("still to be implemented")
+        for key, value in embargo_dct.items():
+            for embargo_sublst in value:
+                # Extend to 16 weeks after confinement
+                embargo_sublst[1] = embargo_sublst[1].shift(weeks=16)
 
 
     # --- TERMINATION AND NOTICE PERIOD --- #
@@ -1492,7 +1503,7 @@ def main():
                     sickpay_sublst[1] = new_employment_edt
                 
                 # Recount sick pay balance
-                sick_pay_balance = sick_pay_balance + period_duration(sickpay_sublst[0], sickpay_sublst[1])
+                sick_pay_claimed += period_duration(sickpay_sublst[0], sickpay_sublst[1])
 
 
     # --- Termination case: TERMINATION DURING EMBARGO PERIOD --- #
@@ -1510,83 +1521,107 @@ def main():
     # --- DATE CONVERSION AND OUTPUT PREPARATION --- #
 
 
-    # Convert dates from arrow to datetime for compatibility
+    # Convert dates from arrow to datetime for compatibility with Pandas
+    # Strip time information
     # Convert standalone lists
     master_lst = [trial_lst, reg_employment_lst, notice_period_lst, extension_lst]
-    for lst in master_lst:
-        for index, value in enumerate(lst):
+    for sublst in master_lst:
+        for index, value in enumerate(sublst):
             if isinstance(value, arrow.Arrow):
-                lst[index] = value.datetime.date()
+                sublst[index] = value.datetime.date()
+                sublst[index] = value.strftime("%d.%m.%Y")
+            elif isinstance(value, datetime.date):
+                    sublst[index] = value.strftime("%d.%m.%Y")
 
     # Convert lists in dicts
     for value in (incap_dct.values(), embargo_dct.values(), sick_pay_dct.values()):
-        for lst in value:
-            for index, value in enumerate(lst):
+        for sublst in value:
+            for index, value in enumerate(sublst):
                 if isinstance(value, arrow.Arrow):
-                    lst[index] = value.datetime.date()
+                    sublst[index] = value.datetime.date()
+                    sublst[index] = value.strftime("%d.%m.%Y")
+                elif isinstance(value, datetime.date):
+                    sublst[index] = value.strftime("%d.%m.%Y")
 
     # Copy local variables and covert to datetime
     local_vars = locals()
     output_dct = local_vars.copy()
+    # Sort employment_sdt as global variable into dict
+    output_dct["employment_sdt"] = employment_sdt
     for key, value in list(output_dct.items()):
         if isinstance(value, arrow.Arrow):
             output_dct[key] = value.datetime.date()
+            output_dct[key] = value.strftime("%d.%m.%Y")
+        elif isinstance(value, datetime.date):
+                output_dct[key] = value.strftime("%d.%m.%Y")
 
 
     # --- VISUALIZATION - DATA INPUT --- #
 
-    df = pd.DataFrame()
+    df = pd.DataFrame([
+        dict(task="[PH_T]", start=output_dct["termination_dt"], end=output_dct["termination_dt"], stack="stack_1", color="#ffffff"),
+    ])
 
     # Insert sick pay dict into dataframe
     for key, value in sick_pay_dct.items():
         for sickpay_sublst in value:
-            df_new_row = pd.DataFrame(task=lang("Sick Pay", "Lohnfortzahlung"), start=sickpay_sublst[0], end=sickpay_sublst[1], stack="stack_2", color="#f032e6")
-            pd.concat([df, df_new_row])
+            if sickpay_sublst != []:
+                df_new_row = pd.DataFrame([dict(task=lang("Sick Pay", "Lohnfortzahlung"), start=sickpay_sublst[0], end=sickpay_sublst[1], stack="stack_2", color="#f032e6")])
+                pd.concat([df, df_new_row])
 
     # Insert trial period into dataframe
-    df.append(Task=lang("Probation Period", "Probezeit"), Start=check_index(trial_lst, 0), End=check_index(trial_lst, 1), Stack="f58231")
+    df_new_row = pd.DataFrame([dict(task=lang("Probation Period", "Probezeit"), start=check_index(trial_lst, 0), end=check_index(trial_lst, 1), stack="f58231")])
+    pd.concat([df, df_new_row])
 
     # Insert regular employment into dataframe
-    df.append(task=lang("Regular Employment", "Reguläre Anstellung"), Start=check_index(reg_employment_lst, 0), End=check_index(reg_employment_lst, 1), Stack="stack_3", color="#3cb44b")
+    df_new_row = pd.DataFrame([dict(task=lang("Regular Employment", "Reguläre Anstellung"), start=check_index(reg_employment_lst, 0), end=check_index(reg_employment_lst, 1), stack="stack_3", color="#3cb44b")])
+    pd.concat([df, df_new_row])
 
     # Insert embargo period dict into dataframe
     for key, value in embargo_dct.items():
         for embargo_sublst in value:
-            df.append(task=lang("Embargo Period", "Embargo"), Start=embargo_sublst[0], End=embargo_sublst[1], Stack="stack_3")
+            if embargo_sublst != []:
+                df_new_row = pd.DataFrame([dict(task=lang("Embargo Period", "Embargo"), start=embargo_sublst[0], end=embargo_sublst[1], Stack="stack_3")])
+                pd.concat([df, df_new_row])
 
     # Insert regular notice period into dataframe
-    df.append(task=lang("Regular Notice Period", "Ordentliche Kündigungsfrist"), Start=check_index(notice_period_lst, 0), End=check_index(notice_period_lst, 1), Stack="stack_3", color="#000075")
+    df_new_row = pd.DataFrame([dict(task=lang("Regular Notice Period", "Ordentliche Kündigungsfrist"), start=check_index(notice_period_lst, 0), end=check_index(notice_period_lst, 1), stack="stack_3", color="#000075")])
+    pd.concat([df, df_new_row])
 
     # Insert missed notice period compensation into dataframe
-    df.append(Task=lang("Compensation Missed Notice Period", "Kompensation verpasste Kündigungsfrist"), Start=check_index(notice_period_lst, 2), End=check_index(notice_period_lst, 3), Stack="stack_3", color="#4363d8"),
+    df_new_row = pd.DataFrame([dict(task=lang("Compensation Missed Notice Period", "Kompensation verpasste Kündigungsfrist"), start=check_index(notice_period_lst, 2), end=check_index(notice_period_lst, 3), stack="stack_3", color="#4363d8")])
+    pd.concat([df, df_new_row])
 
     # Insert notice period extension into dataframe
-    df.append(Task=lang("Notice Period Extension", "Verlängerung Kündigungsfrist"), Start=check_index(extension_lst, 0), End=check_index(extension_lst, 1), Stack="stack_3", color="#911eb4"),
+    df_new_row = pd.DataFrame([dict(task=lang("Notice Period Extension", "Verlängerung Kündigungsfrist"), start=check_index(extension_lst, 0), end=check_index(extension_lst, 1), stack="stack_3", color="#911eb4")])
+    pd.concat([df, df_new_row])
 
     # Insert incapacity dict into dataframe
     for key, value in incap_dct.items():
         for incap_sublst in value:
-            df.append(task=lang("Incapacity", "Krankheit"), Start=incap_sublst[0], End=incap_sublst[1], Stack="stack_3", color="#800000")
+            if incap_sublst != []:
+                df_new_row = pd.DataFrame([dict(task=lang("Incapacity", "Krankheit"), Start=incap_sublst[0], End=incap_sublst[1], Stack="stack_3", color="#800000")])
+                pd.concat([df, df_new_row])
 
     # Insert place holders into dataframe
-    df.insert(0, task="[PH_T]", start=output_dct["termination_dt"], end=output_dct["termination_dt"], stack="stack_1", color="#ffffff")
-    df.append(-1, task="[PH_B]", start=output_dct["termination_dt"], end=output_dct["termination_dt"], stack="stack_5", color="#ffffff")
+    df_new_row = pd.DataFrame([dict(task="[PH_B]", start=output_dct["termination_dt"], end=output_dct["termination_dt"], stack="stack_5", color="#ffffff")])
+    pd.concat([df, df_new_row])
 
     # --- VISUALIZATION - FORMAT --- #
 
     fig = px.timeline(df,
-                x_start="Start",
-                x_end="End",
-                y="Stack",
+                x_start="start",
+                x_end="end",
+                y="stack",
                 opacity=1,
-                color="Task",
+                color="task",
                 width=1000,
                 height=700,
-                hover_name="Task",
-                hover_data={"Task":False,
-                            "Stack":False,
-                            "Start": True,
-                            "End":True})
+                hover_name="task",
+                hover_data={"task":False,
+                            "stack":False,
+                            "start": True,
+                            "end":True})
 
     config = {'displayModeBar': True,
               'displaylogo': False,
@@ -1594,7 +1629,7 @@ def main():
 
     fig.update_traces(marker_line_width=1.0, opacity=0.95)
 
-    fig.update_xaxes(range=[output_dct["employment_sdt"], incap_dct[key][1]])
+    fig.update_xaxes(range=[reg_employment_lst[0], new_employment_edt])
 
     fig.update_layout(
         barmode="overlay",
@@ -1656,42 +1691,34 @@ def main():
 
     # --- OUTPUT --- #
 
-    # Reformat dates to omit time info
-    # Output dict
-    for key, value in list(output_dct.items()):
-        if isinstance(value, datetime.date):
-            output_dct[key] = value.strftime("%d.%m.%Y")
-
-    # Standalone lists
-    for lst in master_lst:
-        for index, value in enumerate(lst):
-            if isinstance(value, datetime.date):
-                lst[index] = value.strftime("%d.%m.%Y")
-
-    # Dicts
-    for value in (incap_dct.values(), embargo_dct.values(), sick_pay_dct.values()):
-        for sublst in value:
-            for index, subvalue in enumerate(sublst):
-                if isinstance(subvalue, datetime.date):
-                    sublst[index] = subvalue.strftime("%d.%m.%Y")
+    # Remove progress bar
+    output.remove("scope_progress")    
 
     # Increase max width for visualization
     session.set_env(output_max_width="1080px")
 
-    with output.use_scope("scope_1", clear=True):
+    # Variables to append with dynamic data
+    incap_output_sdt = incap_output_edt = sick_pay_period_dur = output.output()
+
+
+    with output.use_scope("scope_input", clear=True):
         output.put_markdown("""## Input"""), None,
         output.put_table([
         [lang("Event", "Ereignis"), lang("Date", "Datum")],
         [lang("Employment Start Date", "Beginn Arbeitsverhältnis"), output_dct["employment_sdt"]],
         [lang("Date of Termination", "Kündigungsdatum"), output_dct["termination_dt"]],
-        [lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incap_output_sdt],
-        [lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incap_output_edt],
+        [output.put_scope("append_input")],
         ])
 
+    with output.use_scope("append_input"):
         for key, value in incap_dct.items():
             for incap_sublst in value:
-                incap_output_sdt = incap_output_sdt.append(incap_sublst[0])
-                incap_output_edt = incap_output_edt.append(incap_sublst[1])
+                if incap_sublst != []:
+                    output.put_row(lang("Incapacity Start Date", "Beginn Arbeitsunfähigkeit"), incap_sublst[0])
+                    output.put_row(lang("Incapacity End Date", "Ende Arbeitsunfähigkeit"), incap_sublst[1])
+
+    with output.use_scope("scope_output", clear=True):
+
 
         output.put_markdown(lang("""## Non-binding Evaluation""", """## Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
         output.put_markdown(lang("""### Embargo and Notice Periods""", """### Kündigungs- und Sperrfristen """)).style('margin-top: 20px'), None,
@@ -1709,14 +1736,15 @@ def main():
         output.put_table([
         ["", lang("Start Date", "Anfangsdatum"), lang("End Date", "Enddatum"), lang("Duration", "Dauer")],
         [lang("1. Period:", "1. Periode:"), incap_output_sdt, incap_output_edt, sick_pay_period_dur + lang(" days", " Tage")],
-        ["Total:", "", "", str(sick_pay_balance) + lang(" days", " Tage")]
+        ["Total:", "", "", str(sick_pay_claimed) + lang(" days", " Tage")]
         ])
 
         for key, value in sick_pay_dct:
             for sickpay_sublst in value:
-                incap_output_sdt = incap_output_sdt.append(sickpay_sublst[0])
-                incap_output_edt = incap_output_edt.append(sickpay_sublst[1])
-                sick_pay_period_dur = str(period_duration(sickpay_sublst[0], sickpay_sublst[1]))
+                if incap_sublst != []:
+                    incap_output_sdt = incap_output_sdt.append(sickpay_sublst[0])
+                    incap_output_edt = incap_output_edt.append(sickpay_sublst[1])
+                    sick_pay_period_dur = str(period_duration(sickpay_sublst[0], sickpay_sublst[1]))
 
         # Plotly output to PyWebIO
         plotly_html = fig.to_html(include_plotlyjs="require", full_html=False, config=config)

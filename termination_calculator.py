@@ -177,7 +177,7 @@ def single_date(lst, first_index, last_index):
         lst[first_index] = lst[last_index]
         return lst
 
-# Function to check if index exists
+# Function to check if index exists, if not place empty string
 def check_index(lst, index):
     if index < len(lst):
         return lst[index]
@@ -1554,14 +1554,49 @@ def main():
     # Increase max width for visualization
     session.set_env(output_max_width="1080px")
 
-    with output.use_scope("scope_summary"):
+    # Summary of most important datapoints
+    with output.use_scope("scope_res_general"):
 
-        output.put_markdown("""### Input """), None,
+        output.put_markdown(lang("""## Key Results""", """## Wichtigste Resultate""")).style('margin-top: 20px'), None,
+
+        output.put_row([
+            output.put_markdown(lang("""**Validity of Termination:**""", """**Gültigkeit Kündigung:**""")), None,
+            output.put_markdown(termination_validity),
+            None
+        ], size="35% 10px auto")
+        output.put_row([
+            output.put_markdown(lang("""**End date of employment:**""", """**Enddatum Anstellung:**""")), None,
+            output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
+            None
+        ], size="35% 10px auto")
+        output.put_row([
+            output.put_markdown(lang("""**End date of probation period:**""", """**Enddatum Probezeit:**""")), None,
+            output.put_markdown(trial_lst[-1].format("DD.MM.YYYY")),
+            None
+        ], size="35% 10px auto")
+        output.put_row([
+            output.put_markdown(lang("""**Total Extension Probation Period:**""", """**Gesamtverlängerung Probezeit**""")), None,
+            output.put_markdown(str(trial_extension_dur)),
+            None
+        ], size="35% 10px auto")
+        output.put_row([
+            output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist**""")), None,
+            output.put_markdown(str(notice_overlap)),
+            None
+        ], size="35% 10px auto")
+
+    # Start of detailed results
+    # Scope for the summary of incapacities as declared by user input
+    with output.use_scope("scope_res_incap"):
+
+        output.put_markdown(lang("""## Detailed Results """, """## Detaillierte Ergebnisse""")).style('margin-top: 30px'), None,
+        output.put_markdown(lang("""#### Evaluated Incapacities (Your Input) """, """ Ausgewertete Arbeitsunfähigkeiten (Ihre Eingabe)""")).style('margin-top: 20px'), None,
         output.put_row([output.put_markdown(
-            lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit / Periode**""")),
-            output.put_markdown(lang("""**Start**""", """**Start**""")),
-            output.put_markdown(lang("""**End**""", """**Ende**""")),
-            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
+            lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit / Periode**""")), None,
+            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+            output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+            ])
 
     for key, value in incap_dct.items():
         for incap_sublst in value:
@@ -1570,45 +1605,40 @@ def main():
                     output.put_text(str(key) + " // " + str(value.index(incap_sublst))), None,
                     output.put_text(incap_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(incap_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(incap_sublst[0], incap_sublst[1])) + lang(" days", " Tage")),
-                    ], scope="scope_summary")
+                    output.put_text(str(period_duration(incap_sublst[0], incap_sublst[1])) + lang(" days", " Tage")), None,
+                    ], scope="scope_res_incap")
 
-    with output.use_scope("scope_results_1"):
+    # Scope for the summary of the trial period
+    with output.use_scope("scope_res_trial"):
+        output.put_markdown(lang("""#### Trial Period""", """#### Probezeit""")).style('margin-top: 20px'), None,
+        
+        if trial_relevance == True:
+            output.put_row([
+                output.put_markdown(lang("""**Trial Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+                ])
 
-        output.put_markdown(lang("""### Non-binding Evaluation""", """### Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
+            output.put_row([
+                output.put_text("Trial Period"), None,
+                output.put_text(trial_lst[0].format("DD.MM.YYYY")), None,
+                output.put_text(trial_lst[1].format("DD.MM.YYYY")), None,
+                output.put_text(str(period_duration(trial_lst[0], trial_lst[1])) + lang(" days", " Tage")), None,
+                ])
+        else:
+            output.put_markdown(lang("""[No trial period evaluated]""", """[Keine Probezeit ausgewertet]""")), None,
 
-        output.put_table([
-            [lang("Validity of Termination:", "Gültigkeit der Kündigung:"), str(termination_validity)],
-            [lang("End date of employment:", "Enddatum der Anstellung:"), new_employment_edt.format("DD.MM.YYYY")],
-        ], header=None)
+    # Scope for the summary of any embargo periods
+    with output.use_scope("scope_res_embargo"):
 
-        with output.use_scope("scope_results_2"):
-            output.put_markdown(lang("""### Trial Period""", """### Probezeit""")).style('margin-top: 20px'), None,
-            
-            if trial_relevance == True:
-                output.put_row([
-                    output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
-                    output.put_markdown(lang("""**Start**""", """**Start**""")),
-                    output.put_markdown(lang("""**End**""", """**Ende**""")),
-                    output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
-
-            
-                output.put_row([
-                    output.put_text(trial_lst[0].format("DD.MM.YYYY")), None,
-                    output.put_text(trial_lst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(trial_lst[0], trial_lst[1])) + lang(" days", " Tage")),
-                    ])
-            else:
-                output.put_markdown(lang("""[No trial period evaluated]""", """[Keine Probezeit ausgewertet]""")), None,
-
-    with output.use_scope("scope_results_2"):
-
-        output.put_markdown(lang("""### Embargo Periods""", """### Sperrfristen """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""#### Embargo Periods""", """#### Sperrfristen """)).style('margin-top: 20px'), None,
         output.put_row([
-            output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
-            output.put_markdown(lang("""**Start**""", """**Start**""")),
-            output.put_markdown(lang("""**End**""", """**Ende**""")),
-            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
+            output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
+            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+            output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
+            )])
 
     for key, value in embargo_dct.items():
         # Count iterations
@@ -1619,18 +1649,20 @@ def main():
                     output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
                     output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")),
-                    ], scope="scope_results_2")
+                    output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
+                    ], scope="scope_res_embargo")
                 i += 1
 
-    with output.use_scope("scope_results_3"):
+    # Scope for the summary of any sick pay periods
+    with output.use_scope("scope_res_sp"):
 
-        output.put_markdown(lang("""### Sick Pay Periods""", """### Perioden Lohnfortzahlung """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""#### Sick Pay Periods""", """#### Perioden Lohnfortzahlung """)).style('margin-top: 20px'), None,
         output.put_row([
-            output.put_markdown(lang("""**Year // Period**""", """**Jahr / Periode**""")),
-            output.put_markdown(lang("""**Start**""", """**Start**""")),
-            output.put_markdown(lang("""**End**""", """**Ende**""")),
-            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
+            output.put_markdown(lang("""**Year of Service // Period**""", """**Dientsjahr / Periode**""")), None,
+            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+            output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+            ])
 
     for key, value in sickpay_dct.items():
         # Count iterations
@@ -1638,25 +1670,71 @@ def main():
         for sickpay_sublst in value:
             if sickpay_sublst != []:
                 output.put_row([
-                    output.put_text(str(sickpay_sublst[0].year) + " // " + str(i)), None,
+                    output.put_text(str(key) + " // " + str(i)), None,
                     output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")),
-                    ], scope="scope_results_3")
+                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
+                    ], scope="scope_res_sp")
                 i += 1
-    
+
+    # Scope for the summary of notice period
+    with output.use_scope("scope_res_notice"):
+        output.put_markdown(lang("""#### Notice Period""", """#### Kündigungsfrist""")).style('margin-top: 20px'), None,
+        
+        # Omit if no notice period was evaluated
+        if termination_occurence == True:
+            output.put_row([
+                output.put_markdown(lang("""**Notice Period**""", """**Kündigungsfrist**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+                ])
+
+            output.put_row([
+                output.put_text(lang("Original Notice Period", "Ursprüngliche Kündigungsfrist")), None,
+                output.put_text(notice_period_lst[0].format("DD.MM.YYYY")), None,
+                output.put_text(notice_period_lst[1].format("DD.MM.YYYY")), None,
+                output.put_text(str(period_duration(notice_period_lst[0], notice_period_lst[1])) + lang(" days", " Tage")), None,
+                ])
+
+            with output.use_scope("scope_res_notice_comp"):
+                try:
+                    output.put_row([
+                        output.put_text(lang("Notice Period Compensation", "Kompensation Kündigungsfrist")), None,
+                        output.put_text(notice_period_lst[2].format("DD.MM.YYYY")), None,
+                        output.put_text(notice_period_lst[3].format("DD.MM.YYYY")), None,
+                        output.put_text(str(period_duration(notice_period_lst[2], notice_period_lst[3])) + lang(" days", " Tage")), None,
+                    ])
+                except IndexError:
+                    output.remove("scope_res_notice_comp")
+
+            with output.use_scope("scope_res_ext"):
+                try:
+                    output.put_row([
+                        output.put_text(lang("Notice Period Extension", "Verlängerung Kündigungsfrist")), None,
+                        output.put_text(extension_lst[0].format("DD.MM.YYYY")), None,
+                        output.put_text(extension_lst[1].format("DD.MM.YYYY")), None,
+                        output.put_text(str(period_duration(extension_lst[0], extension_lst[1])) + lang(" days", " Tage")), None,
+                    ])
+                except IndexError:
+                    output.remove("scope_res_ext")
+
+        else:
+            output.put_markdown(lang("""[No notice period evaluated]""", """[Keine Kündigungsfrist ausgewertet]""")), None,
+
+    # Append totals to embargo and sick pay output as evaluated above
     output.put_row([
         output.put_text(), None,
         output.put_text(""), None,
-        output.put_text(""), None,
-        output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")),
-        ], scope="scope_results_2")
+        output.put_text("Total:"), None,
+        output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")), None,
+        ], scope="scope_res_embargo")
     output.put_row([
         output.put_text(""), None,
         output.put_text(""), None,
-        output.put_text(""), None,
-        output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")),
-        ], scope="scope_results_3")
+        output.put_text("Total:"), None,
+        output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")), None,
+        ], scope="scope_res_sp")
 
 
     # --- OUTPUT VISUALIZATION - PREPARATION --- #

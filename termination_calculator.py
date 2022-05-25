@@ -487,10 +487,20 @@ def main():
     # Variables: Case combinations (required input)
     incapacity_type = case["incapacity_type"]
     trial_relevance = case["trial_relevance"]
+    # Set trial relevance to true if yes
+    if trial_relevance == ("Yes" or "Ja"):
+        trial_relevance = True
+    else:
+        trial_relevance = False
+    # Set termination occurence to true if yes
     termination_occurence = case["termination_occurence"]
+    if termination_occurence == ("Yes" or "Ja"):
+        termination_occurence = True
+    else:
+        termination_occurence = False
     # Set end of seniority to today if no termination was issued
     if case.get("termination_occurence") == "No" or "Nein":
-        termination_dt = arrow.now().shift(years=+2)
+        termination_dt = arrow.now()
 
     output.set_processbar("bar", 0.3)
 
@@ -557,7 +567,7 @@ def main():
             """))
 
     # User input: Trial period (block optional)
-    if trial_relevance != ("No" or "Nein"):
+    if trial_relevance == True:
         trial_period_data = input.input_group("", [
             input.checkbox(
                     lang("Working days", "Arbeitstage"),
@@ -583,6 +593,9 @@ def main():
         # Declare variables from trial period
         workdays_input = trial_period_data["workdays_input"]
         trial_input = trial_period_data["trial_input"]
+        # Set trial relevance to false if no trial period was specified
+        if trial_input == lang("No probation period", "Keine Probezeit"):
+            trial_relevance = False
 
         output.set_processbar("bar", 0.5)
 
@@ -950,7 +963,7 @@ def main():
             """))
 
     # User input: Termination (block optional)
-    if termination_occurence == ("Yes" or "Ja"):
+    if termination_occurence == True:
         termination_data = input.input_group("", [
             # Date of termination
             input.input(
@@ -1029,7 +1042,7 @@ def main():
             """))
 
     # User input: Trial termination (block optional)
-    if (termination_occurence == ("Yes" or "Ja")) and (trial_relevance != ("No" or "Nein")):
+    if (termination_occurence == True) and (trial_relevance == True):
         termination_data = input.input_group("", [
             # Duration of notice period
             input.select(
@@ -1086,63 +1099,62 @@ def main():
     # --- TRIAL PERIOD --- #
 
     # Check if user selected trial period evaluation
-    if (trial_relevance != ("No" or "Nein")):
-        if trial_input != ("No probation period" or "Keine Probezeit"):
+    if trial_relevance == True:
 
-            # Gather weekday numbers from user input
-            # Source: https://stackoverflow.com/a/70202124/14819955
-            weekday_mapping = {day: index for index, day in enumerate((
-            "Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"))}
-            for weekday in workdays_input:
-                workdays_num.append(weekday_mapping.get(weekday, weekday))
+        # Gather weekday numbers from user input
+        # Source: https://stackoverflow.com/a/70202124/14819955
+        weekday_mapping = {day: index for index, day in enumerate((
+        "Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"))}
+        for weekday in workdays_input:
+            workdays_num.append(weekday_mapping.get(weekday, weekday))
 
 
-            # Extract probation period duration from user input
-            if trial_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
-                trial_dur = 1
-            else:
-                trial_dur = int(trial_input)
+        # Extract probation period duration from user input
+        if trial_input in ["No mention of probation period", "Keine Angaben zur Probezeit"]:
+            trial_dur = 1
+        else:
+            trial_dur = int(trial_input)
 
-            # Calculate probation period end date
-            trial_lst.insert(1, min(trial_lst[0].shift(months=+trial_dur), termination_dt)) # BGer 4C.45/2004
-            trial_lst[1] = subtract_corr(trial_lst[0], trial_lst[1])
+        # Calculate probation period end date
+        trial_lst.insert(1, min(trial_lst[0].shift(months=+trial_dur), termination_dt)) # BGer 4C.45/2004
+        trial_lst[1] = subtract_corr(trial_lst[0], trial_lst[1])
 
-            # Assume no trial extension
-            trial_extension = 0
-            # Check if any incapacity date lies within probation period
+        # Assume no trial extension
+        trial_extension = 0
+        # Check if any incapacity date lies within probation period
+        for key, value in incap_dct.items():
+                for incap_sublst in value:
+                    if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
+                        trial_extension = 1
+
+        if trial_extension == 1:
             for key, value in incap_dct.items():
-                    for incap_sublst in value:
-                        if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
-                            trial_extension = 1
+                for incap_sublst in value:
+                    
+                    # Gather future holidays for 2 years
+                    for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
+                        if holiday_checker(day, workplace) == True:
+                            holidays.append(day)
+                                    
+                    # Gather working days during probation period
+                    for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
+                        # Add date to list if it is a working day, not a holiday and not already in the list
+                        if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
+                            missed_workdays.append(day)
 
-            if trial_extension == 1:
-                for key, value in incap_dct.items():
-                    for incap_sublst in value:
-                        
-                        # Gather future holidays for 2 years
-                        for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
-                            if holiday_checker(day, workplace) == True:
-                                holidays.append(day)
-                                        
-                        # Gather working days during probation period
-                        for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
-                            # Add date to list if it is a working day, not a holiday and not already in the list
-                            if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
-                                missed_workdays.append(day)
+                    # Gather working days during probation period extension and match against amount of missed working days
+                    for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
+                        if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
+                            repeated_workdays.append(day)
 
-                        # Gather working days during probation period extension and match against amount of missed working days
-                        for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
-                            if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
-                                repeated_workdays.append(day)
+                    # Set extension end date
+                    trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
+                    
+        # Shift regular employment start date to after trial period
+        reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
 
-                        # Set extension end date
-                        trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
-                        
-            # Shift regular employment start date to after trial period
-            reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
-
-            # Count probation period extension
-            trial_extension_dur = len(repeated_workdays)
+        # Count probation period extension
+        trial_extension_dur = len(repeated_workdays)
     else:
         trial_extension_dur = 0
 
@@ -1272,7 +1284,7 @@ def main():
     # --- TERMINATION AND NOTICE PERIOD --- #
 
     # Check if user selected termination evaluation
-    if termination_occurence == ("Yes" or "Ja"):
+    if termination_occurence == True:
 
         # Legal minimum notice period according to seniority
         if notice_period_input in ["No mention of notice period", "Keine Angaben zur Kündigungsfrist"]:
@@ -1341,7 +1353,8 @@ def main():
     # Set termination date to regular employment endt date if no termination date was given
     else: 
         notice_overlap = 0
-        new_employment_edt = reg_employment_lst[1]
+        new_employment_edt = termination_dt
+        termination_dt = termination_dt.shift(years=200) # Shift out of sight
 
     # --- SICK PAY --- #
 
@@ -1456,12 +1469,12 @@ def main():
 
     # Standard case
     # Termination during prbation period
-    if termination_occurence == ("No" or "Nein"):
+    if termination_occurence == False:
         termination_case = "no_case"
-    elif (termination_occurence == ("Yes" or "Ja")) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
+    elif (termination_occurence == True) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
         termination_case = "trial_case"
     # Termination during embargo period
-    elif (termination_occurence == ("Yes" or "Ja")):
+    elif (termination_occurence == True):
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
                 if embargo_sublst != []:
@@ -1478,6 +1491,7 @@ def main():
 
     if termination_case == "no_case":
         termination_validity = no_termination
+        new_employment_edt = lang("No termination.", "Keine Kündigung.")
 
     # --- Termination case: Standard case --- #
 
@@ -1540,45 +1554,56 @@ def main():
     # Increase max width for visualization
     session.set_env(output_max_width="1080px")
 
-    with output.use_scope("scope_summary_1"):
+    with output.use_scope("scope_summary"):
 
-        output.put_markdown("""## Input """), None,
-        output.put_markdown("""### Angaben """), None,
-        output.put_table([
-        [lang("Event", "Ereignis"), lang("Value", "Wert")],
-        [lang("Employment Start Date", "Beginn Arbeitsverhältnis"), employment_sdt.format("DD.MM.YYYY")],
-        [lang("Date of Termination", "Kündigungsdatum"), termination_dt.format("DD.MM.YYYY")],
-        ])
-    
-    with output.use_scope("scope_summary_2"):
-
-        output.put_markdown(""" ### Incapacities """, """ ### Arbeitsunfähgkeiten """)
-        output.put_row([output.put_markdown(lang("""**Incapacity / Period**""", """**Arbeitsunfähigkeit / Periode**""")), output.put_markdown(lang("""**Start**""", """**Start**""")), output.put_markdown(lang("""**End**""", """**Ende**"""))])
+        output.put_markdown("""### Input """), None,
+        output.put_row([output.put_markdown(
+            lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit / Periode**""")),
+            output.put_markdown(lang("""**Start**""", """**Start**""")),
+            output.put_markdown(lang("""**End**""", """**Ende**""")),
+            output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
 
     for key, value in incap_dct.items():
         for incap_sublst in value:
             if incap_sublst != []:
                 output.put_row([
-                    output.put_text(str(key) + "-" + str(value.index(incap_sublst))), None,
+                    output.put_text(str(key) + " // " + str(value.index(incap_sublst))), None,
                     output.put_text(incap_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(incap_sublst[1].format("DD.MM.YYYY")), None,
-                    ], scope="scope_summary_2")
+                    output.put_text(str(period_duration(incap_sublst[0], incap_sublst[1])) + lang(" days", " Tage")),
+                    ], scope="scope_summary")
 
     with output.use_scope("scope_results_1"):
 
-        output.put_markdown(lang("""## Non-binding Evaluation""", """## Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
-        output.put_markdown(lang("""### Embargo and Notice Periods""", """### Kündigungs- und Sperrfristen """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""### Non-binding Evaluation""", """### Unverbindliche Auswertung""")).style('margin-top: 20px'), None,
+
         output.put_table([
-        [lang("Query", "Abfrage"), lang("Result", "Ergebnis")],
-        [lang("Validity of Termination:", "Gültigkeit der Kündigung:"), str(termination_validity)],
-        [lang("End date of employment:", "Enddatum der Anstellung:"), new_employment_edt.format("DD.MM.YYYY")],
-        [lang("Total Trial Duration:", "Gesamtdauer Probezeit:"), str(trial_extension_dur) + lang(" days", " Tage")],
-        [lang("Missed Calendar Days Notice Period:", "Verpasste Kalendertage Kündigungsfrist:"), str(notice_overlap) + lang(" days", " Tage")],
-        ])
+            [lang("Validity of Termination:", "Gültigkeit der Kündigung:"), str(termination_validity)],
+            [lang("End date of employment:", "Enddatum der Anstellung:"), new_employment_edt.format("DD.MM.YYYY")],
+        ], header=None)
+
+        with output.use_scope("scope_results_2"):
+            output.put_markdown(lang("""### Trial Period""", """### Probezeit""")).style('margin-top: 20px'), None,
+            
+            if trial_relevance == True:
+                output.put_row([
+                    output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
+                    output.put_markdown(lang("""**Start**""", """**Start**""")),
+                    output.put_markdown(lang("""**End**""", """**Ende**""")),
+                    output.put_markdown(lang("""**Duration**""", """**Dauer**"""))])
+
+            
+                output.put_row([
+                    output.put_text(trial_lst[0].format("DD.MM.YYYY")), None,
+                    output.put_text(trial_lst[1].format("DD.MM.YYYY")), None,
+                    output.put_text(str(period_duration(trial_lst[0], trial_lst[1])) + lang(" days", " Tage")),
+                    ])
+            else:
+                output.put_markdown(lang("""[No trial period evaluated]""", """[Keine Probezeit ausgewertet]""")), None,
 
     with output.use_scope("scope_results_2"):
 
-        output.put_markdown(lang("""### Embargo""", """### Sperrfristen """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""### Embargo Periods""", """### Sperrfristen """)).style('margin-top: 20px'), None,
         output.put_row([
             output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
             output.put_markdown(lang("""**Start**""", """**Start**""")),
@@ -1591,7 +1616,7 @@ def main():
         for embargo_sublst in value:
             if embargo_sublst != []:
                 output.put_row([
-                    output.put_text(str(key) + "//" + str(value.index(embargo_sublst))), None,
+                    output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
                     output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
                     output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")),
@@ -1600,7 +1625,7 @@ def main():
 
     with output.use_scope("scope_results_3"):
 
-        output.put_markdown(lang("""### Sick Pay""", """### Lohnfortzahlung """)).style('margin-top: 20px'), None,
+        output.put_markdown(lang("""### Sick Pay Periods""", """### Perioden Lohnfortzahlung """)).style('margin-top: 20px'), None,
         output.put_row([
             output.put_markdown(lang("""**Year // Period**""", """**Jahr / Periode**""")),
             output.put_markdown(lang("""**Start**""", """**Start**""")),
@@ -1613,7 +1638,7 @@ def main():
         for sickpay_sublst in value:
             if sickpay_sublst != []:
                 output.put_row([
-                    output.put_text(str(sickpay_sublst[0].year) + "//" + str(i)), None,
+                    output.put_text(str(sickpay_sublst[0].year) + " // " + str(i)), None,
                     output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
                     output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
                     output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")),
@@ -1797,7 +1822,7 @@ def main():
 
     fig.update_traces(marker_line_width=1.0, opacity=0.95)
 
-    fig.update_xaxes(range=[reg_employment_lst[0], new_employment_edt])
+    fig.update_xaxes(range=[reg_employment_lst[0], reg_employment_lst[1]])
 
     fig.update_layout(
         barmode="overlay",
@@ -1856,6 +1881,7 @@ def main():
             showarrow=False, xanchor='left', text=str(sick_pay_syear_end_index) + "Y")
             ])
 
+
     # --- OUTPUT VISUALIZATION - MAKE OUTPUT --- #
 
     with output.use_scope("scope_visualization"):
@@ -1864,7 +1890,7 @@ def main():
         output.put_markdown(lang("""
         ## Interactive Viszualization
 
-        IMPORTANT: The chart below is intended only as a visual aide. Please consult the table above for your results.
+        IMPORTANT: The chart below is intended only as a visual aide. Please consult the tables above for your results.
 
         """, """
         ## Interaktive Visualisierung

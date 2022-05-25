@@ -65,6 +65,14 @@ def check_form_employment(data):
     except:
         return ("employment_sdt", lang("ERROR: Please enter a valid date.", "ERROR: Bitte geben Sie ein gültiges Datum ein."))
 
+def check_case_comb(data):
+    if (data["incapacity_type"] == False) and (data["trial_relevance"] == False) and (data["termination_occurence"] == False):
+        output.put_error(lang("ERROR: Please check your input. You must choose at least one parameter for evaluation.",
+                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Sie müssen mindestens einen Parameter für die Evaluation auswählen."),
+                            closable=True,
+                            scope="scope_input_instructions")
+        return ("", "")
+
 # Validate incap form
 def check_form_incapacity(data):
     data_lst_1 = []
@@ -464,6 +472,9 @@ def main():
     case = input.input_group("", [
         input.select(lang("Which type of incapacity would you like to evaluate?", "Welche Art von Arbeitsunfähigkeit möchten Sie auswerten?"),
             options=[{
+                "label":lang("no incapacity","Keine Arbeitsunfähigkeit"),
+                "value":False,
+                },{
                 "label":lang("accident or illness","Unfall oder Krankheit"),
                 "value":"illacc",
                 },{
@@ -476,31 +487,33 @@ def main():
             inline=True,
             required=True),
         input.select(lang("Evaluation of tiral period?", "Auswertung der Probezeit?"),
-            [lang("Yes", "Ja"), lang("No", "Nein")],
+            options=[{
+                "label":lang("Yes", "Ja"),
+                "value":True
+                },{
+                "label":lang("No", "Nein"),
+                "value":False}],
             name="trial_relevance",
             required=True),
         input.select(lang("Evaluation of termination?", "Auswertung einer Kündigung?"),
-            [lang("Yes", "Ja"), lang("No", "Nein")],
+            options=[{
+                    "label":lang("Yes", "Ja"),
+                    "value":True
+                    },{
+                    "label":lang("No", "Nein"),
+                    "value":False}],
             name="termination_occurence",
             required=True),
-    ])
-    # Variables: Case combinations (required input)
+    ], check_case_comb)
+    # Get variables
     incapacity_type = case["incapacity_type"]
     trial_relevance = case["trial_relevance"]
-    # Set trial relevance to true if yes
-    if trial_relevance == ("Yes" or "Ja"):
-        trial_relevance = True
-    else:
-        trial_relevance = False
-    # Set termination occurence to true if yes
     termination_occurence = case["termination_occurence"]
-    if termination_occurence == ("Yes" or "Ja"):
-        termination_occurence = True
-    else:
-        termination_occurence = False
+    # Set termination occurence to true if yes
     # Set end of seniority to today if no termination was issued
     if case.get("termination_occurence") == "No" or "Nein":
         termination_dt = arrow.now()
+
 
     output.set_processbar("bar", 0.3)
 
@@ -886,7 +899,7 @@ def main():
                 placeholder="DD.MM.YYYY"),
         ], validate = check_form_incapacity)
         # Variables: Milservice
-        incap_dct[1] = [arrow.get(milservice_data["milservice_sdt"], "DD.MM.YYYY"), arrow.get(milservice_data["milservice_edt"], "DD.MM.YYYY")]
+        incap_dct[1] = populate_dct(milservice_data)
 
         output.set_processbar("bar", 0.8)
 
@@ -940,7 +953,7 @@ def main():
                     placeholder="DD.MM.YYYY"),
         ], validate = check_form_incapacity)
         # Variables: Pregnancy
-        incap_dct[1] = [arrow.get(preg_data["preg_sdt"], "DD.MM.YYYY"), arrow.get(preg_data["preg_edt"], "DD.MM.YYYY")]
+        incap_dct[1] = populate_dct(preg_data)
 
         output.set_processbar("bar", 0.8)
 
@@ -1120,14 +1133,14 @@ def main():
         trial_lst[1] = subtract_corr(trial_lst[0], trial_lst[1])
 
         # Assume no trial extension
-        trial_extension = 0
+        trial_extension = False
         # Check if any incapacity date lies within probation period
         for key, value in incap_dct.items():
                 for incap_sublst in value:
                     if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
-                        trial_extension = 1
+                        trial_extension = True
 
-        if trial_extension == 1:
+        if trial_extension == True:
             for key, value in incap_dct.items():
                 for incap_sublst in value:
                     
@@ -1195,9 +1208,6 @@ def main():
                     embargo_sublst.clear() # Clear list
                     continue
 
-                if embargo_claimed_loop >= embargo_cap_loop:
-                    embargo_sublst.clear()
-
                 # Set embargo cap according to seniority at beginning of incapacity
                 if embargo_sublst[0] < syears[1]:
                     embargo_cap_loop = 29 # cap at 29 days incl. start and end date
@@ -1205,6 +1215,11 @@ def main():
                     embargo_cap_loop = 179 # cap at 179 days incl. start and end date
                 else:
                     embargo_cap_loop = 89 # cap at 90 days incl. start and end date
+
+                # Skip if embargo_cap has been exceeded
+                if embargo_claimed_loop >= embargo_cap_loop:
+                    embargo_sublst.clear()
+                    continue
 
                 # Count unclaimed days
                 embargo_unclaimed_loop = max(0, (embargo_cap_loop - embargo_claimed_loop))
@@ -1264,11 +1279,16 @@ def main():
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
                 # Check if milservice duration was over 11 days
-                if embargo_sublst[0].shift(days=+11) < embargo_sublst[1]:
+                milservice_dur = period_duration(embargo_sublst[0], embargo_sublst[1])
+                if milservice_dur > 11:
                     # Set embargo start to 4 weeks prior
-                    embargo_sublst[0] = embargo_sublst[0].shift(weeks=-4)
+                    embargo_sublst[0] = embargo_sublst[0].shift(weeks=-4, days=-1)
                     # Set embargo end to 4 weeks after
-                    embargo_sublst[1] = embargo_sublst[1].shift(weeks=-4)
+                    embargo_sublst[1] = embargo_sublst[1].shift(weeks=+4, days=+1)
+        
+        # Count claimed total of days
+        embargo_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
+
 
 
     # --- CASE: PREGNANCY --- #
@@ -1278,7 +1298,10 @@ def main():
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
                 # Extend to 16 weeks after confinement
-                embargo_sublst[1] = embargo_sublst[1].shift(weeks=16)
+                embargo_sublst[1] = embargo_sublst[1].shift(weeks=16, days=+1)
+        
+        # Count claimed total of days
+        embargo_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
 
 
     # --- TERMINATION AND NOTICE PERIOD --- #
@@ -1317,7 +1340,7 @@ def main():
         # Calculate new employment end date
         new_employment_edt = notice_period_lst[-1]
 
-        # Calculate notice overlap
+        # Calculate total notice overlap
         notice_overlap = 0
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
@@ -1326,8 +1349,10 @@ def main():
 
         # Shift missed notice period days, start and end date
         if notice_overlap != 0:
-            notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+1)) # start date
-            notice_period_lst.insert(3, max(notice_period_lst[1], embargo_dct[key][-1]).shift(days=+notice_overlap)) # end date
+            # Start day after latest embargo
+            notice_period_lst.insert(2, max(notice_period_lst[1], embargo_dct[key][-1][-1]).shift(days=+1))
+            # Shift end date
+            notice_period_lst.insert(3, notice_period_lst[2].shift(days=+notice_overlap))
             single_date(notice_period_lst, 2, 3)
 
             # Evaluate overlap again with missed period
@@ -1438,15 +1463,18 @@ def main():
             # Skip sick pay after end of employment
             if sickpay_sublst[1] > new_employment_edt:
                 sickpay_sublst.clear() # Clear list
-
-            if sick_pay_claimed_loop >= sick_pay_cap:
-                sickpay_sublst.clear() # Clear list
+                continue
 
             # Calculate sick pay according to service year
             if sickpay_sublst[0] < syears[1]:
                 sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(weeks=+3, days=-1))
             else:
                 sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
+
+            # Check if cap has been exceeded
+            if sick_pay_claimed_loop >= sick_pay_cap:
+                sickpay_sublst.clear() # Clear list
+                continue
 
             # Calculate sick pay unclaimed
             sick_pay_unclaimed_loop = sick_pay_cap - sick_pay_claimed_loop
@@ -1471,21 +1499,20 @@ def main():
     # Termination during prbation period
     if termination_occurence == False:
         termination_case = "no_case"
-    elif (termination_occurence == True) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
+    # Termination without issue
+    if (termination_occurence == True):
+        termination_case = "standard_case"
+    # Termination during trial
+    if (termination_occurence == True) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
         termination_case = "trial_case"
     # Termination during embargo period
-    elif (termination_occurence == True):
+    if (termination_occurence == True):
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
                 if embargo_sublst != []:
                     if termination_dt.is_between(embargo_sublst[0], embargo_sublst[-1], "[]"):
                         termination_case = "embargo_case"
                         break
-                    else:
-                        termination_case = "standard_case"
-    # Standard case
-    else:
-        termination_case = "standard_case"
 
     # --- Termination case: No case --- #
 
@@ -1517,7 +1544,7 @@ def main():
         notice_period_lst[1] = termination_dt.shift(days=+trial_notice_period)
         notice_overlap = 0
         reg_employment_lst.clear()
-        embargo_dct[key].clear()
+        embargo_dct.clear()
         new_employment_edt = notice_period_lst[-1]
 
 
@@ -1586,27 +1613,33 @@ def main():
         ], size="35% 10px auto")
 
     # Start of detailed results
+
     # Scope for the summary of incapacities as declared by user input
     with output.use_scope("scope_res_incap"):
 
         output.put_markdown(lang("""## Detailed Results """, """## Detaillierte Ergebnisse""")).style('margin-top: 30px'), None,
         output.put_markdown(lang("""#### Evaluated Incapacities (Your Input) """, """ Ausgewertete Arbeitsunfähigkeiten (Ihre Eingabe)""")).style('margin-top: 20px'), None,
-        output.put_row([output.put_markdown(
-            lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit / Periode**""")), None,
-            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
-            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
-            output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
-            ])
+        if incapacity_type != False:
 
-    for key, value in incap_dct.items():
-        for incap_sublst in value:
-            if incap_sublst != []:
-                output.put_row([
-                    output.put_text(str(key) + " // " + str(value.index(incap_sublst))), None,
-                    output.put_text(incap_sublst[0].format("DD.MM.YYYY")), None,
-                    output.put_text(incap_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(incap_sublst[0], incap_sublst[1])) + lang(" days", " Tage")), None,
-                    ], scope="scope_res_incap")
+            output.put_row([output.put_markdown(
+                lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit / Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+                ])
+
+            for key, value in incap_dct.items():
+                for incap_sublst in value:
+                    if incap_sublst != []:
+                        output.put_row([
+                            output.put_text(str(key) + " // " + str(value.index(incap_sublst))), None,
+                            output.put_text(incap_sublst[0].format("DD.MM.YYYY")), None,
+                            output.put_text(incap_sublst[1].format("DD.MM.YYYY")), None,
+                            output.put_text(str(period_duration(incap_sublst[0], incap_sublst[1])) + lang(" days", " Tage")), None,
+                            ], scope="scope_res_incap")
+
+        else:
+            output.put_markdown(lang("""[No incapacities evaluated]""", """[Keine Arbeitsunfähigkeiten ausgewertet]""")), None,
 
     # Scope for the summary of the trial period
     with output.use_scope("scope_res_trial"):
@@ -1633,56 +1666,80 @@ def main():
     with output.use_scope("scope_res_embargo"):
 
         output.put_markdown(lang("""#### Embargo Periods""", """#### Sperrfristen """)).style('margin-top: 20px'), None,
-        output.put_row([
-            output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
-            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
-            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
-            output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
-            )])
+        if incapacity_type != False:
 
-    for key, value in embargo_dct.items():
-        # Count iterations
-        i = 0
-        for embargo_sublst in value:
-            if embargo_sublst != []:
-                output.put_row([
-                    output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
-                    output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
-                    output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
-                    ], scope="scope_res_embargo")
-                i += 1
+            output.put_row([
+                output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
+                )])
+
+            for key, value in embargo_dct.items():
+                # Count iterations
+                i = 0
+                for embargo_sublst in value:
+                    if embargo_sublst != []:
+                        output.put_row([
+                            output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
+                            output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
+                            output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
+                            output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
+                            ], scope="scope_res_embargo")
+                        i += 1
+
+            # Append totals to embargo and sick pay output as evaluated above
+            output.put_row([
+                output.put_text(), None,
+                output.put_text(""), None,
+                output.put_text("Total:"), None,
+                output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")), None,
+                ])
+
+        else:
+            output.put_markdown(lang("""[No embargo periods evaluated]""", """[Keine Sperrfristen ausgewertet]""")), None,
 
     # Scope for the summary of any sick pay periods
     with output.use_scope("scope_res_sp"):
 
         output.put_markdown(lang("""#### Sick Pay Periods""", """#### Perioden Lohnfortzahlung """)).style('margin-top: 20px'), None,
-        output.put_row([
-            output.put_markdown(lang("""**Year of Service // Period**""", """**Dientsjahr / Periode**""")), None,
-            output.put_markdown(lang("""**Start**""", """**Start**""")), None,
-            output.put_markdown(lang("""**End**""", """**Ende**""")), None,
-            output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
-            ])
+        if incapacity_type != False:
 
-    for key, value in sickpay_dct.items():
-        # Count iterations
-        i = 0
-        for sickpay_sublst in value:
-            if sickpay_sublst != []:
-                output.put_row([
-                    output.put_text(str(key) + " // " + str(i)), None,
-                    output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
-                    output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
-                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
-                    ], scope="scope_res_sp")
-                i += 1
+            output.put_row([
+                output.put_markdown(lang("""**Year of Service // Period**""", """**Dientsjahr / Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
+                ])
+
+            for key, value in sickpay_dct.items():
+                # Count iterations
+                i = 0
+                for sickpay_sublst in value:
+                    if sickpay_sublst != []:
+                        output.put_row([
+                            output.put_text(str(key) + " // " + str(i)), None,
+                            output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
+                            output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
+                            output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
+                            ], scope="scope_res_sp")
+                        i += 1
+
+            output.put_row([
+                output.put_text(""), None,
+                output.put_text(""), None,
+                output.put_text("Total:"), None,
+                output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")), None,
+                ])
+        else:
+            output.put_markdown(lang("""[No sick pay periods evaluated]""", """[Keine Lohnfortzahlungsfristen ausgewertet]""")), None,
 
     # Scope for the summary of notice period
     with output.use_scope("scope_res_notice"):
         output.put_markdown(lang("""#### Notice Period""", """#### Kündigungsfrist""")).style('margin-top: 20px'), None,
         
         # Omit if no notice period was evaluated
-        if termination_occurence == True:
+        if (termination_occurence == True) and (termination_case != "embargo_case"):
             output.put_row([
                 output.put_markdown(lang("""**Notice Period**""", """**Kündigungsfrist**""")), None,
                 output.put_markdown(lang("""**Start**""", """**Start**""")), None,
@@ -1721,20 +1778,6 @@ def main():
 
         else:
             output.put_markdown(lang("""[No notice period evaluated]""", """[Keine Kündigungsfrist ausgewertet]""")), None,
-
-    # Append totals to embargo and sick pay output as evaluated above
-    output.put_row([
-        output.put_text(), None,
-        output.put_text(""), None,
-        output.put_text("Total:"), None,
-        output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")), None,
-        ], scope="scope_res_embargo")
-    output.put_row([
-        output.put_text(""), None,
-        output.put_text(""), None,
-        output.put_text("Total:"), None,
-        output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")), None,
-        ], scope="scope_res_sp")
 
 
     # --- OUTPUT VISUALIZATION - PREPARATION --- #
@@ -1861,8 +1904,6 @@ def main():
             output_dct["termination_dt"],
             "stack_5"]],
         columns=["task", "start", "end", "stack"]))
-    
-    print(df_lst)
 
     # Combine dataframes
     df = pd.concat(df_lst, ignore_index=True, sort=False)
@@ -1939,9 +1980,7 @@ def main():
             dict(
             x0=syears[5], x1=syears[5], line_color="#3B6728", fillcolor="#3B6728", y0=0, y1=1, xref='x', yref='paper',
             line_width=1.5),
-            dict(
-            x0=syears[sick_pay_syear_end_index], x1=syears[sick_pay_syear_end_index], line_color="#3B6728", fillcolor="#3B6728", y0=0, y1=1, xref='x', yref='paper',
-            line_width=1.5)],
+            ],
             
         
         annotations=[
@@ -1954,9 +1993,6 @@ def main():
             dict(
             x=syears[5], y=0.05, xref='x', yref='paper',font=dict(size=16, color="#3B6728"),
             showarrow=False, xanchor='left', text="5Y"),
-            dict(
-            x=syears[sick_pay_syear_end_index], y=0.05, xref='x', yref='paper',font=dict(size=16, color="#3B6728"),
-            showarrow=False, xanchor='left', text=str(sick_pay_syear_end_index) + "Y")
             ])
 
 

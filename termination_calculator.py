@@ -111,7 +111,7 @@ def check_form_incapacity(data):
 # Validate trial from
 def check_trial(data):
     if len(data["workdays_input"]) < 1:
-        output.put_error(lang("ERROR: Please choose one weekday or more.", "ERROR: Bitte wählen Sie mindestens einen Wochentag."),
+        output.put_error(lang("ERROR: Please choose one or more workdays.", "ERROR: Bitte wählen Sie mindestens einen Arbeitstag."),
                             closable=True,
                             scope="scope_input_instructions")
         return ("", "")
@@ -146,6 +146,22 @@ def overlap_calc(sdt_1, sdt_2, edt_1, edt_2):
         overlap = max(0, delta)
         return(overlap)
 
+# Function to grow date interval
+def grow(main, gaps):
+    start, end = main
+    for lo, hi in gaps:
+        if hi < start:
+            # gap is lower than main
+            continue
+        if lo > end:
+            # gap is higher than main
+            break
+        # extend main end by overlap length
+        overlap_length = overlap_calc(start, lo, end, hi)
+        end = max(end, hi)
+        end = end.shift(days=overlap_length)
+    return [start, end]
+
 # Function to flatten list
 # Source: https://stackoverflow.com/a/71468284/14819955
 def flat(x):
@@ -154,6 +170,14 @@ def flat(x):
             return []
         case [[*sublist], *r]:
             return [*sublist, *flat(r)]
+
+# Function to remove empty nested lists
+# Source: https://stackoverflow.com/a/20368240/14819955
+def purify(lst):
+    for (i, sl) in enumerate(lst):
+        if type(sl) == list:
+            lst[i] = purify(sl)
+    return [i for i in lst if i != [] and i != '']
 
 # Function to push dates to desired endpoint
 def push_endpoint(date, endpoint):
@@ -290,6 +314,7 @@ def clamp(n, minn, maxn):
         return n
 
 
+
 # --- MAIN FNCTION --- #
 
 def main():
@@ -306,7 +331,7 @@ def main():
     # User info: Landing page
     with output.use_scope("scope_input_instructions"):
         output.put_markdown(lang("""
-            Were you incapacitated to work due to illness, accident, military service or pregnancy?
+            Were you incapacitated to work due to illness, accident, military service, or pregnancy?
             Use this app to evaluate:
             - Trial period extensions
             - Notice periods
@@ -329,9 +354,9 @@ def main():
 
         output.put_markdown(lang("""
             ----
-            **This app is currently undergoing beta testing. Any [Feedback](mailto:rm@llq.ch) is appreciated.**
+            **This app is currently undergoing beta testing. Any [feedback](mailto:rm@llq.ch) is appreciated.**
             
-            The following case combinations **cannot** be evaluated (yet):
+            The following case combinations **cannot** be evaluated:
             - Temporary employment
             - The combination of different kinds of incapacities (e.g. military service and sickness)
             - More than three separate incapacities due to illness or accidents
@@ -340,7 +365,7 @@ def main():
             ----
             **Diese App befindet sich derzeit im Betatest. [Feedback](mailto:rm@llq.ch) ist sehr wilkommen.**
             
-            Die folgenden Fallkonstellationen können (noch) nicht ausgewertet werden:
+            Die folgenden Fallkonstellationen können nicht ausgewertet werden:
             - Befristete Arbeitsverhältnisse
             - Die Kombination von verschiedenartigen Arbeitsunfähigkeiten (bspw. Militärdienst und Krankheit)
             - Mehr als drei getrennte Arbeitsunfähigkeiten zufolge Unfall oder Krankheit
@@ -351,10 +376,10 @@ def main():
         output.put_collapse(lang("Legal Framework", "Rechtliche Grundlagen",), [
             output.put_html(lang("""
                 <ul>
-                    <li> Probation Period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b">Art. 335b OR</a> </li>
-                    <li> Regular Termination: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c">Art. 335c OR</a> </li>
-                    <li> Embargo Period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c">Art. 336c OR</a> </li>
-                    <li> Sick Pay: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a">Art. 324a OR</a> </li>
+                    <li> Probation period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_b">Art. 335b OR</a> </li>
+                    <li> Regular termination: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_335_c">Art. 335c OR</a> </li>
+                    <li> Embargo period: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_336_c">Art. 336c OR</a> </li>
+                    <li> Sick pay: <a target="_blank" rel="noopener noreferrer" href="https://www.fedlex.admin.ch/eli/cc/27/317_321_377/en#art_324_a">Art. 324a OR</a> </li>
                     <li> Federal document on legally mandated holidays: <a target="_blank" rel="noopener noreferrer" href="https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf">Link to PDF</a> </li>
                 </ul>
             """,
@@ -389,7 +414,7 @@ def main():
         output.put_markdown(lang("""
             ### Terms and Conditions
 
-            This app is provided "as is". Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
+            This app is provided _as is_. Use at your own risk. Warranties or liabilities of any kind are excluded to the extent permitted by applicable law. Do not rely solely on the automatically generated evaluation.
             
             Usage is free of charge. No personal data is saved.
             ""","""
@@ -417,7 +442,7 @@ def main():
 
             Please enter the date of the first day of work and the place of work.
 
-            Hints:
+            Notes:
             - The first day of work can be different from the starting date of the employment contract.
             - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
@@ -434,8 +459,8 @@ def main():
     employment_data = input.input_group("", [
         input.input(
             lang(
-                "First Day of Work",
-                "Tag des Stellenatritts"),
+                "First day of work (DD.MM.YYYY)",
+                "Tag des Stellenatritts (DD.MM.YYYY)"),
             name="employment_sdt",
             type=input.TEXT,
             required=True,
@@ -444,7 +469,7 @@ def main():
             minlength="10",
             placeholder="DD.MM.YYYY"),
         input.select(
-            lang("Place of Work (Canton)", "Arbeitsort (Kanton)"),
+            lang("Place of work (canton)", "Arbeitsort (Kanton)"),
             ["AG", "AI", "AR", "BS", "BL", "BE", "FR", "GE", "GL", "GR", "JU", "LU", "NE", "NW",
             "OW", "SH", "SZ", "SO", "SG", "TG", "TI", "UR", "VS", "VD", "ZG", "ZH"],
             name="workplace",
@@ -466,10 +491,10 @@ def main():
 
             Please select any case options you would like to evaluate.
 
-            Hints:
-            - The evaluation of the trial period is advisable, when any incapacity to work occured during the trial period.
-            - The evaluation of a termination is advisable, when a termination has already been issued.
-            - If termination is not evaluated, the date of today is taken to calculate seniority.
+            Notes:
+            - Performing an evaluation of the trial period is especially advised whenever an incapacity occured during the probation period.
+            - The evaluation of a termination is especially advised whenever a termination has already been issued.
+            - If no termination is evaluated, today's date is taken to determine seniority.
             ""","""
             ### Fallkonstellation
 
@@ -483,9 +508,9 @@ def main():
 
     # User input: Case combinations (block required)
     case = input.input_group("", [
-        input.select(lang("Which type of incapacity would you like to evaluate?", "Welche Art von Arbeitsunfähigkeit möchten Sie auswerten?"),
+        input.select(lang("Type of incapacity", "Art der Arbeitsunfähigkeit"),
             options=[{
-                "label":lang("no incapacity","Keine Arbeitsunfähigkeit"),
+                "label":lang("No incapacity","Keine Arbeitsunfähigkeit"),
                 "value":False,
                 },{
                 "label":lang("accident or illness","Unfall oder Krankheit"),
@@ -499,22 +524,24 @@ def main():
             name="incapacity_type",
             inline=True,
             required=True),
-        input.select(lang("Evaluation of tiral period?", "Auswertung der Probezeit?"),
+        input.select(lang("Evaluation of probation period", "Auswertung Probezeit"),
             options=[{
-                "label":lang("Yes", "Ja"),
-                "value":True
-                },{
-                "label":lang("No", "Nein"),
-                "value":False}],
-            name="trial_relevance",
-            required=True),
-        input.select(lang("Evaluation of termination?", "Auswertung einer Kündigung?"),
-            options=[{
+                    "label":lang("No", "Nein"),
+                    "value":False
+                    },{
                     "label":lang("Yes", "Ja"),
                     "value":True
-                    },{
+                    }],
+            name="trial_relevance",
+            required=True),
+        input.select(lang("Evaluation of termination", "Auswertung Kündigung"),
+            options=[{
                     "label":lang("No", "Nein"),
-                    "value":False}],
+                    "value":False
+                    },{
+                    "label":lang("Yes", "Ja"),
+                    "value":True
+                    }],
             name="termination_occurence",
             required=True),
     ], check_case_comb)
@@ -533,36 +560,36 @@ def main():
     # User info: Amount of incapacities (block optional)
     with output.use_scope("scope_input_instructions", clear=True):
         output.put_markdown(lang("""
-            ### Amount of Incapacities
+            ### Number of Incapacities
 
-            You have chosen the evaluation of an incapacity to work due to illness(es) or accident(s). Please specify how many **seperate** illnesses or accidents you would like to evaluate.
+            You have chosen to evaluate an incapacity due to illness(es) or accident(s). Please specify how many **seperate** illnesses or accidents you would like to evaluate.
 
-            Hints:
-            - Incapacities to work counts a **seperate**, when there is **no connection** between them. Example: There is no connection between having the flu and a car accident – these would count as seperate.
-            - Incapacities to work count **not as seperate**, when there is **any connection** between them. For example: A prolonged cancer treatment with multiple periods of absence would count as a single incapacity.
-            - Breaks between single incapacities (e.g. cancer) can be specified in the next step.
+            Notes:
+            - Incapacities to work count as **seperate** if there is **no connection** between them. Example: There is no connection between having the flu and a car accident – these would count as seperate.
+            - Incapacities to work **do not count as seperate** if there is **any connection** between them. For example: A prolonged cancer treatment with multiple periods of absence would count as a single incapacity.
+            - Breaks between individual incapacities (e.g. cancer) can be specified in the next step.
             ""","""
             ### Anzahl Arbeitsunfähigkeiten
 
-            Sie haben die Auswertung einer Arbeitsunfähigkeit zufolge Krankheit oder Unfall ausgewählt. Bitte geben Sie an, wie viele **getrennte** Krankheiten oder Unfälle Sie auswerten möchten.
+            Sie haben die Auswertung einer Arbeitsunfähigkeit zufolge Krankheit oder Unfall ausgewählt. Bitte geben Sie an, wie viele **unabhängige** Krankheiten oder Unfälle Sie auswerten möchten.
 
             Hinweise:
-            - Arbeitsunfähigkeiten gelten als **getrennt**, wenn zwischen ihnen **keinerlei Verbindung** besteht. Beispiel: Es besteht keine Verbindung zwischen einer Grippeerkrankung und einem Autounfall.
-            - Arbeitsunfähigkeiten gelten **nicht als getrennt**, wenn zwischen ihnen eine **irgendwie geartete Verbindung** besteht. Beispiel: Eine langandauernde Krebstherapie mit vielzähligen Abwesenheiten zählt als einzelne Arbeitsunfähigkeit.
+            - Arbeitsunfähigkeiten gelten als **unabhängig**, wenn zwischen ihnen **keinerlei Verbindung** besteht. Beispiel: Es besteht keine Verbindung zwischen einer Grippeerkrankung und einem Autounfall.
+            - Arbeitsunfähigkeiten gelten **nicht als unabhängig**, wenn zwischen ihnen eine **irgendwie geartete Verbindung** besteht. Beispiel: Eine langandauernde Krebstherapie mit vielzähligen Abwesenheiten zählt als einzelne Arbeitsunfähigkeit.
             - Unterbrüche zwischen einer einzelnen Arbeitsunfähigkeit können im nächsten Schritt angegeben werden.
             """))
 
     # User input: Amount of incapacities (block optional)
     if incapacity_type == "illacc":
-        illacc_amount = input.select(lang("Amount of seperate illnesses or accidents", "Anzahl getrennter Unfälle oder Krankheiten"),
+        illacc_amount = input.select(lang("Number of Seperate Incapacities (Illness or Accident)", "Anzahl unabhängiger Arbeitsunfähigkeiten (Krankheit oder Unfall)"),
             options=[{
                 "label":lang("One single accident or illness", "Einzelner Unfall oder Krankheit"),
                 "value":1
                 },{
-                "label":lang("Two or more accidents or illnesses", "Zwei oder mehr Unfälle oder Krankheiten"),
+                "label":lang("Two seperate accidents or illnesses", "Zwei unabhängige Unfälle oder Krankheiten"),
                 "value":2
                 },{
-                "label":lang("Three seperate accidents or illnesses", "Drei getrennte Unfälle oder Krankheiten"),
+                "label":lang("Three seperate accidents or illnesses", "Drei unabhängige Unfälle oder Krankheiten"),
                 "value":3}
             ],
             required=True)
@@ -575,13 +602,13 @@ def main():
     # User info: Trial period (block optional)
     with output.use_scope("scope_input_instructions", clear=True):
         output.put_markdown(lang("""
-            ### Trial Period
+            ### Probation Period
 
             Please specify the weekly workdays and the duration of the probation period.
 
-            Hints:
-            - Acutal missed workdays during the probation trial period can lead to an extension of the trial period.
-            - This app respects public holidays during the evaluation. Individual reasons for missed workdays during the trial period are not taken into account.
+            Notes:
+            - Missed workdays during the probation period can lead to its extension.
+            - This app respects public holidays and weekends. Other reasons for missed workdays during the probation period are not taken into account.
             ""","""
             ### Angaben Probezeit
 
@@ -589,22 +616,22 @@ def main():
 
             Hinweise:
             - Verpasste Arbeitstage können zu einer Verlängerung der Probezeit führen.
-            - Diese App berücksichtigt die Feiertage im Auswertungszeitraum. Individuelle Gründe für verpasste Arbeitstage während der Probezeit werden nicht berücksichtigt.
+            - Diese App berücksichtigt die Feiertage und Wochenenden im Auswertungszeitraum. Andere Gründe für verpasste Arbeitstage während der Probezeit werden nicht berücksichtigt.
             """))
 
     # User input: Trial period (block optional)
     if trial_relevance == True:
         trial_period_data = input.input_group("", [
             input.checkbox(
-                    lang("Working days", "Arbeitstage"),
+                    lang("Workdays", "Arbeitstage"),
                     ["Montag / Monday", "Dienstag / Tuesday", "Mittwoch / Wednesday", "Donnerstag / Thursday", "Freitag / Friday", "Samstag / Saturday", "Sonntag / Sunday"],
                     name="workdays_input",
                     required=True),
             # probation period
             input.select(
                 lang(
-                    "Duration of probation period (months)?",
-                    "Dauer Probezeit (Monate)?"),
+                    "Duration of probation period (months)",
+                    "Dauer Probezeit (Monate)"),
                     [lang(
                         "No mention of probation period",
                         "Keine Angaben zur Probezeit"),
@@ -615,7 +642,7 @@ def main():
                     name="trial_input",
                     type=input.TEXT,
                     required=True),
-        ], validate = check_trial) 
+        ], validate = check_trial)
         # Declare variables from trial period
         workdays_input = trial_period_data["workdays_input"]
         trial_input = trial_period_data["trial_input"]
@@ -631,12 +658,12 @@ def main():
     # User info: First illacc (alternate block)
     with output.use_scope("scope_input_instructions", clear=True):
         output.put_markdown(lang("""
-            ### Incapacity due to illness or accident
+            ### Incapacity due to Illness or Accident
 
             You have chosen the evaluation of one or more incapacities due to illness(es) or accident(s).
             For each incapacity (illness or accident) you can specify up to three periods of absence.
 
-            Hints:
+            Notes:
             - Enter the periods in chronological order.
             - If only one continuous period occurred, leave the remaining form fields empty.
             - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
@@ -872,7 +899,7 @@ def main():
 
             Please specify on which date the service started and on which it ended.
 
-            Hints:
+            Notes:
             - 
             ""","""
             ### Militär-, Zivil- oder Schutzdienst
@@ -923,7 +950,7 @@ def main():
 
             Please specify on which date the pregnancy commenced the date of confinement.
 
-            Hints:
+            Notes:
             - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised.
             - Any natural termination of the pregnancy counts as confinement, including premature birth or miscarriage, not so abortions.
             - If the child has not yet been born, enter an approximate date.
@@ -973,19 +1000,14 @@ def main():
     # User info: Termination (block optional)
     with output.use_scope("scope_input_instructions", clear=True):
         output.put_markdown(lang("""
-            ### Termination
+            ### Termination (by employer)
 
-            Please specify on which date the termination was (or shall be) received, the duration of the notice period and the on what end date the emplyment is allowed to be terminated.
-
-            Hints:
+            Please specify on which date the termination was (or shall be) received, the duration of the notice period and the projected end date of employment.
             - 
             ""","""
-            ### Kündigung
+            ### Kündigung (durch Arbeitgeber)
 
-            
-
-            Hinweise:
-            -
+            Bitte geben Sie das Datum an, an dem die Kündigung dem Arbeitnehmer zuging (oder zugehen soll), ferner die Dauer der Kündigungsfrist und den Kündigungstermin.
             """))
 
     # User input: Termination (block optional)
@@ -994,8 +1016,8 @@ def main():
             # Date of termination
             input.input(
                 lang(
-                    "On which date did you receive your notice of termination?",
-                    "An welchem Datum haben Sie Ihre Kündigung erhalten?"),
+                    "Date of termination notice receipt",
+                    "Datum Kündigungsempfang"),
                 name="termination_dt",
                 type=input.TEXT,
                 required=True,
@@ -1018,7 +1040,7 @@ def main():
             # Cancellation end of month required
             input.select(
                 lang(
-                    "Termination Date",
+                    "Termination date",
                     "Kündigungstermin"),
                 [lang(
                     "No mention of termination date",
@@ -1052,16 +1074,16 @@ def main():
     # User info: Trial termination (block optional)
     with output.use_scope("scope_input_instructions", clear=True):
         output.put_markdown(lang("""
-            ### Trial Termination
+            ### Probation Period Termination
 
-            You have chosen to evaluate trial period and termination: Please specify the length of the notice period for the trial period (in days).
+            You have chosen to evaluate both probation period and termination: Please specify the length of the notice period for the probation period (in days).
 
-            Hints:
+            Notes:
             - 
             ""","""
             ### Kündigung Probezeit
 
-            Sie wollen Kündigung und Probezeit auswerten: Bitte geben Sie Kündigungsfrist für die Probezeit an (in Tagen).
+            Sie wollen Kündigung und Probezeit auswerten: Bitte geben Sie die Kündigungsfrist für die Probezeit an (in Tagen).
 
             Hinweise:
             -
@@ -1073,10 +1095,10 @@ def main():
             # Duration of notice period
             input.select(
                 lang(
-                    "Duration of notice period (days)",
-                    "Dauer der Kündigungsfrist (Tage)"),
+                    "Duration of notice period for probation period (days)",
+                    "Dauer der Kündigungsfrist während der Probezeit (Tage)"),
                 [lang(
-                    "No mention in contract",
+                    "Not specified in contract",
                     "Keine Angaben im Arbeitsvertrag"),
                     "0", "1", "2", "3", "4", "5", "6", "7", "8","9", "10", "11", "12","13", "14", "15",
                     "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"],
@@ -1102,8 +1124,8 @@ def main():
 
     # List with seniority thresholds
     # Create correponding sick pay dict
-    syears = []
     sickpay_dct = {}
+    syears = []
     for i in range(0,35):
         syears.append(employment_sdt.shift(years=i))
         # Populate sick pay dict with emtpy lists (used later)
@@ -1111,16 +1133,31 @@ def main():
 
     # Empty lists
     notice_period_lst = []
-    extension_lst = []
+    notice_comp_lst = []
+    notice_ext_lst = []
     workdays_num = []
     missed_workdays = []
     repeated_workdays = []
     holidays = []
     embargo_negative = []
+    incap_masterlst = []
+    embargo_masterlst = []
+    sickpay_masterlst = []
     master_lst = []
 
-    # Empty dicts
+    # Dics
     embargo_dct = {}
+
+    # Deep copy incap dict into embargo dict
+    embargo_dct = copy.deepcopy(incap_dct)
+
+    # Prepare list of merged incap periods
+    # Flatten dictionary values
+    incap_masterlst = flat(list(incap_dct.values()))
+    # Merge overlapping periods
+    incap_masterlst = merge(incap_masterlst)
+    # Remove empty nested lists
+    incap_masterlst = purify(incap_masterlst)
 
     # --- TRIAL PERIOD --- #
 
@@ -1148,33 +1185,31 @@ def main():
         # Assume no trial extension
         trial_extension = False
         # Check if any incapacity date lies within probation period
-        for key, value in incap_dct.items():
-                for incap_sublst in value:
-                    if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
-                        trial_extension = True
+        for incap_sublst in incap_masterlst:
+            if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
+                trial_extension = True
 
         if trial_extension == True:
-            for key, value in incap_dct.items():
-                for incap_sublst in value:
-                    
-                    # Gather future holidays for 2 years
-                    for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
-                        if holiday_checker(day, workplace) == True:
-                            holidays.append(day)
-                                    
-                    # Gather working days during probation period
-                    for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
-                        # Add date to list if it is a working day, not a holiday and not already in the list
-                        if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
-                            missed_workdays.append(day)
+            for incap_sublst in incap_masterlst:
+                
+                # Gather future holidays for 2 years
+                for day in arrow.Arrow.range("days", trial_lst[0], limit=730):
+                    if holiday_checker(day, workplace) == True:
+                        holidays.append(day)
+                                
+                # Gather working days during probation period
+                for day in arrow.Arrow.range("days", max(trial_lst[0], incap_sublst[0]), min(trial_lst[1], incap_sublst[1])):
+                    # Add date to list if it is a working day, not a holiday and not already in the list
+                    if (day.weekday() in workdays_num) and (day not in holidays) and (day not in missed_workdays):
+                        missed_workdays.append(day)
 
-                    # Gather working days during probation period extension and match against amount of missed working days
-                    for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
-                        if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
-                            repeated_workdays.append(day)
+                # Gather working days during probation period extension and match against amount of missed working days
+                for day in arrow.Arrow.range("days", max(trial_lst[1], incap_sublst[1]).shift(days=+1), limit=365):
+                    if (day.weekday() in workdays_num) and (day not in holidays) and (len(missed_workdays) > len(repeated_workdays)):
+                        repeated_workdays.append(day)
 
-                    # Set extension end date
-                    trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
+                # Set extension end date
+                trial_lst[1] = min(repeated_workdays[-1], termination_dt) # cap at termination
                     
         # Shift regular employment start date to after trial period
         reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
@@ -1184,11 +1219,6 @@ def main():
     else:
         trial_extension_dur = 0
 
-
-    # --- GENERAL INCAPACITY --- #
-
-    # Deep copy incap dict into embargo dict
-    embargo_dct = copy.deepcopy(incap_dct)
 
     # --- CASE: ILLNESS OR ACCIDENT --- #
 
@@ -1323,9 +1353,11 @@ def main():
 
     # Prepare list of merged embargo periods
     # Flatten dictionary values
-    embargo_lst = flat(list(embargo_dct.values()))
+    embargo_masterlst = flat(list(embargo_dct.values()))
     # Merge overlapping periods
-    embargo_lst = merge(embargo_lst)
+    embargo_masterlst = merge(embargo_masterlst)
+    # Remove empty nested lists
+    embargo_masterlst = purify(embargo_masterlst)
 
 
     # --- TERMINATION AND NOTICE PERIOD --- #
@@ -1367,38 +1399,27 @@ def main():
         # Calculate total notice overlap, i.e. how many days of original notice period were missed
         notice_overlap = 0
         # Duration of original notice period
-        for embargo_sublst in embargo_lst:
-            if embargo_sublst != []:
-                notice_overlap += overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
+        for embargo_sublst in embargo_masterlst:
+            notice_overlap += overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
+
 
         # Shift missed notice period days, start and end date
         if notice_overlap != 0:
-            # Start day after latest embargo
-            notice_period_lst.insert(2, max(notice_period_lst[1], embargo_lst[-1][-1]).shift(days=+1))
-            # Shift end date
-            notice_period_lst.insert(3, notice_period_lst[2].shift(days=+notice_overlap))
-            single_date(notice_period_lst, 2, 3)
 
-            # Evaluate overlap again with missed period
-            compensation_overlap = 0
-            for embargo_sublst in embargo_lst:
-                if embargo_sublst != []:
-                    compensation_overlap += overlap_calc(notice_period_lst[2], embargo_sublst[0], notice_period_lst[3], embargo_sublst[1])
-
-            # Shift end date again if required
-            if compensation_overlap != 0:
-                notice_period_lst[3] = notice_period_lst[3].shift(days=notice_overlap)
-                single_date(notice_period_lst, 2, 3)
+            notice_comp_lst.append(notice_period_lst[1].shift(days=+1))
+            notice_comp_lst.append(notice_period_lst[1].shift(days=+notice_overlap))
+            # Handle consecutive interruptions of notice period
+            notice_comp_lst = grow(notice_comp_lst, embargo_masterlst) 
 
             # Create extension if needed
             if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
-                extension_lst.insert(0, notice_period_lst[-1].shift(days=+1))
-                extension_lst.insert(1, push_endpoint(notice_period_lst[-1], endpoint))
-                single_date(extension_lst, 0, 1)
-                new_employment_edt = extension_lst[-1]
-                notice_extension_dur = period_duration(extension_lst[0], extension_lst[1])
+                notice_ext_lst.insert(0, notice_comp_lst[1].shift(days=+1))
+                notice_ext_lst.insert(1, push_endpoint(notice_comp_lst[1], endpoint))
+                single_date(notice_ext_lst, 0, 1)
+                new_employment_edt = notice_ext_lst[1]
+                notice_extension_dur = period_duration(notice_ext_lst[0], notice_ext_lst[1])
             else:
-                new_employment_edt = notice_period_lst[-1]
+                new_employment_edt = notice_comp_lst[1]
                 notice_extension_dur = 0
 
             # Calculate total overlap
@@ -1516,17 +1537,26 @@ def main():
                 # Count total
                 sick_pay_claimed_total += sick_pay_claimed_loop
 
+        # Delete empty syear keys from dict
+        for key in list(sickpay_dct.keys()):
+            if sickpay_dct[key] == []:
+                del sickpay_dct[key]
+
         # Merge overlapping dictionary values for each year
-        for value in sickpay_dct.values():
-            if value != []:
-                value = merge(value)
+        # Prepare list of merged embargo periods
+        # Flatten dictionary values
+        sickpay_masterlst = flat(list(sickpay_dct.values()))
+        # Merge overlapping periods
+        sickpay_masterlst = merge(sickpay_masterlst)
+        # Remove empty nested lists
+        sickpay_masterlst = purify(sickpay_masterlst)
 
 
     # --- EVALUATION AND CLEANUP --- #
 
     # Output
-    valid_termination  = lang("✔️ Your termination appears valid.", "✔️ Ihre Kündigung scheint gültig zu sein.")
-    invalid_termination = lang("❌ YOUR TERMINATION APPEARS INVALID.", "❌ IHRE KÜNDIGUNG SCHEINT UNGÜLTIG ZU SEIN.")
+    valid_termination  = lang("✅ Your termination appears valid.", "✅ Ihre Kündigung scheint gültig zu sein.")
+    invalid_termination = lang("⛔ YOUR TERMINATION APPEARS INVALID.", "⛔ IHRE KÜNDIGUNG SCHEINT UNGÜLTIG ZU SEIN.")
     no_termination = lang("[--> No termination evaluated]", "[--> Keine Kündigung evaluiert]")
 
     # Standard case
@@ -1541,39 +1571,26 @@ def main():
         termination_case = "trial_case"
     # Termination during embargo period
     if (termination_occurence == True):
-        for embargo_sublst in embargo_lst:
-            if embargo_sublst != []:
-                if termination_dt.is_between(embargo_sublst[0], embargo_sublst[-1], "[]"):
-                    termination_case = "embargo_case"
-                    break
+        for embargo_sublst in embargo_masterlst:
+            if termination_dt.is_between(embargo_sublst[0], embargo_sublst[-1], "[]"):
+                termination_case = "embargo_case"
+                break
 
-    # --- Cleanup sick pay and embargo periods --- #
+    # --- Cleanup sick pay  --- #
     
     # Delete sick pay after valid termination
     if termination_case == ("standard_case" or "trial_case"):
-        for key, value in sickpay_dct.items():
-            for sickpay_sublst in value:
-                if sickpay_sublst != []:
+        for sickpay_sublst in sickpay_masterlst:
 
-                    # Delete sick pay that starts after end of employment
-                    if sickpay_sublst[0] > new_employment_edt:
-                        sickpay_sublst.clear() # Clear list
-                        continue
+            # Delete sick pay that starts after end of employment
+            if sickpay_sublst[0] > new_employment_edt:
+                sickpay_sublst.clear() # Clear list
+                continue
 
-                    # Cap sick pay that surpasses end of employment
-                    if new_employment_edt.is_between(sickpay_sublst[0], sickpay_sublst[1], "[]"):
-                        sickpay_sublst[1] = new_employment_edt
-                        continue
-
-    # Delete embargo periods after valid termination
-        for key, value in embargo_dct.items():
-            for embargo_sublst in value:
-                if embargo_sublst != []:
-
-                    # Delete embargo that starts after beginning of notice period
-                    if embargo_sublst[1] > new_employment_edt:
-                        embargo_sublst.clear()
-                        continue
+            # Cap sick pay that surpasses end of employment
+            if new_employment_edt.is_between(sickpay_sublst[0], sickpay_sublst[1], "[]"):
+                sickpay_sublst[1] = new_employment_edt
+                continue
 
 
     # --- Termination case: No case --- #
@@ -1597,7 +1614,7 @@ def main():
         reason = lang("Termination during probation period.", "Kündigung während Probezeit.")
 
         # Set notice period according to user input
-        if trial_notice_input == ("No mention in contract" or "Keine Angaben im Arbeitsvertrag"):
+        if trial_notice_input == ("Not specified in contract" or "Keine Angaben im Arbeitsvertrag"):
             trial_notice_period = 7
         else:
             trial_notice_period = int(trial_notice_input)
@@ -1622,7 +1639,7 @@ def main():
         notice_period_lst.clear()
         notice_overlap = 0
         reg_employment_lst[1] = reg_employment_lst[1].shift(years=+3) # showing that employment continues
-        extension_lst.clear()
+        notice_ext_lst.clear()
         new_employment_edt = lang("[--> No valid termination]", "[--> Keine gültige Kündigung]")
 
 
@@ -1698,7 +1715,7 @@ def main():
                             ], scope="scope_res_incap")
 
         else:
-            output.put_markdown(lang("""[No incapacities evaluated]""", """[Keine Arbeitsunfähigkeiten ausgewertet]""")), None,
+            output.put_markdown(lang("""[--> No incapacities evaluated]""", """[--> Keine Arbeitsunfähigkeiten ausgewertet]""")), None,
 
     # Scope for the summary of the trial period
     with output.use_scope("scope_res_trial"):
@@ -1719,7 +1736,7 @@ def main():
                 output.put_text(str(period_duration(trial_lst[0], trial_lst[1])) + lang(" days", " Tage")), None,
                 ])
         else:
-            output.put_markdown(lang("""[--> No trial period evaluated]""", """[--> Keine Probezeit ausgewertet]""")), None,
+            output.put_markdown(lang("""[--> No probation period evaluated]""", """[--> Keine Probezeit ausgewertet]""")), None,
 
     # Scope for the summary of any embargo periods
     with output.use_scope("scope_res_embargo"):
@@ -1734,18 +1751,17 @@ def main():
                 output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
                 )])
 
-            for value in embargo_dct.values():
-                # Count iterations
-                i = 0
-                for embargo_sublst in value:
-                    if embargo_sublst != []:
-                        output.put_row([
-                            output.put_text(str(value.index(embargo_sublst))), None,
-                            output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
-                            output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
-                            output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
-                            ], scope="scope_res_embargo")
-                        i += 1
+            # Count
+            i = 1
+            for embargo_sublst in value:
+                if embargo_sublst != []:
+                    output.put_row([
+                        output.put_text(str(i)), None,
+                        output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
+                        output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
+                        output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
+                        ], scope="scope_res_embargo")
+                    i += 1
 
             # Append totals to embargo and sick pay output as evaluated above
             output.put_row([
@@ -1765,24 +1781,23 @@ def main():
         if incapacity_type != False:
 
             output.put_row([
-                output.put_markdown(lang("""**Year of Service // Period**""", """**Dientsjahr / Periode**""")), None,
+                output.put_markdown(lang("""**No.**""", """**Nr.**""")), None,
                 output.put_markdown(lang("""**Start**""", """**Start**""")), None,
                 output.put_markdown(lang("""**End**""", """**Ende**""")), None,
                 output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
                 ])
 
-            for key, value in sickpay_dct.items():
-                # Count iterations
-                i = 0
-                for sickpay_sublst in value:
-                    if sickpay_sublst != []:
-                        output.put_row([
-                            output.put_text(str(key) + " // " + str(i)), None,
-                            output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
-                            output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
-                            output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
-                            ], scope="scope_res_sp")
-                        i += 1
+            # Count iterations
+            i = 1
+            for sickpay_sublst in sickpay_masterlst:
+                if sickpay_sublst != []:
+                    output.put_row([
+                        output.put_text(str(i)), None,
+                        output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
+                        output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
+                        output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
+                        ], scope="scope_res_sp")
+                    i += 1
 
             output.put_row([
                 output.put_text(""), None,
@@ -1800,7 +1815,7 @@ def main():
         # Omit if no notice period was evaluated
         if (termination_occurence == True) and (termination_case != "embargo_case"):
             output.put_row([
-                output.put_markdown(lang("""**Notice Period**""", """**Kündigungsfrist**""")), None,
+                output.put_markdown(lang("""**Type**""", """**Typ**""")), None,
                 output.put_markdown(lang("""**Start**""", """**Start**""")), None,
                 output.put_markdown(lang("""**End**""", """**Ende**""")), None,
                 output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
@@ -1819,7 +1834,7 @@ def main():
                         output.put_text(lang("Notice Period Compensation", "Kompensation Kündigungsfrist")), None,
                         output.put_text(notice_period_lst[2].format("DD.MM.YYYY")), None,
                         output.put_text(notice_period_lst[3].format("DD.MM.YYYY")), None,
-                        output.put_text(str(period_duration(notice_period_lst[2], notice_period_lst[3])) + lang(" days", " Tage")), None,
+                        output.put_text(str(period_duration(notice_comp_lst[0], notice_comp_lst[1])) + lang(" days", " Tage")), None,
                     ])
                 except IndexError:
                     output.remove("scope_res_notice_comp")
@@ -1828,9 +1843,9 @@ def main():
                 try:
                     output.put_row([
                         output.put_text(lang("Notice Period Extension", "Verlängerung Kündigungsfrist")), None,
-                        output.put_text(extension_lst[0].format("DD.MM.YYYY")), None,
-                        output.put_text(extension_lst[1].format("DD.MM.YYYY")), None,
-                        output.put_text(str(period_duration(extension_lst[0], extension_lst[1])) + lang(" days", " Tage")), None,
+                        output.put_text(notice_ext_lst[0].format("DD.MM.YYYY")), None,
+                        output.put_text(notice_ext_lst[1].format("DD.MM.YYYY")), None,
+                        output.put_text(str(period_duration(notice_ext_lst[0], notice_ext_lst[1])) + lang(" days", " Tage")), None,
                     ])
                 except IndexError:
                     output.remove("scope_res_ext")
@@ -1844,7 +1859,7 @@ def main():
     # Convert dates from arrow to datetime for compatibility with Pandas
     # Strip time information
     # Convert standalone lists
-    master_lst = [trial_lst, reg_employment_lst, notice_period_lst, extension_lst]
+    master_lst = [trial_lst, reg_employment_lst, notice_period_lst, notice_comp_lst, notice_ext_lst]
     for sublst in master_lst:
         for index, value in enumerate(sublst):
             if isinstance(value, arrow.Arrow):
@@ -1876,16 +1891,15 @@ def main():
         columns=["task", "start", "end", "stack"]))
 
     # Insert sick pay dict into dataframe
-    for key, value in sickpay_dct.items():
-        for sickpay_sublst in value:
-            if sickpay_sublst != []:
-                df_lst.append(pd.DataFrame(
-                    data=[[
-                        lang("Sick Pay", "Lohnfortzahlung"),
-                        sickpay_sublst[0].datetime.date(),
-                        sickpay_sublst[1].datetime.date(),
-                        "stack_2"]],
-                    columns=["task", "start", "end", "stack"]))
+    for sickpay_sublst in sickpay_masterlst:
+        if sickpay_sublst != []:
+            df_lst.append(pd.DataFrame(
+                data=[[
+                    lang("Sick Pay", "Lohnfortzahlung"),
+                    sickpay_sublst[0].datetime.date(),
+                    sickpay_sublst[1].datetime.date(),
+                    "stack_2"]],
+                columns=["task", "start", "end", "stack"]))
 
     # Insert trial period into dataframe
     df_lst.append(pd.DataFrame(
@@ -1906,11 +1920,11 @@ def main():
         columns=["task", "start", "end", "stack"]))
 
     # Insert embargo period dict into dataframe
-    for embargo_sublst in embargo_lst:
+    for embargo_sublst in embargo_masterlst:
         if embargo_sublst != []:
             df_lst.append(pd.DataFrame(
                 data=[[
-                lang("Embargo Period", "Embargo"),
+                lang("Embargo Period", "Sperrfrist"),
                 embargo_sublst[0].datetime.date(),
                 embargo_sublst[1].datetime.date(),
                 "stack_3"]],
@@ -1929,8 +1943,8 @@ def main():
     df_lst.append(pd.DataFrame(
         data=[[
             lang("Compensation Missed Notice Period", "Kompensation verpasste Kündigungsfrist"),
-            check_index(notice_period_lst, 2),
-            check_index(notice_period_lst, 3),
+            check_index(notice_comp_lst, 0),
+            check_index(notice_comp_lst, 1),
             "stack_3"]],
         columns=["task", "start", "end", "stack"]))
 
@@ -1938,21 +1952,20 @@ def main():
     df_lst.append(pd.DataFrame(
         data=[[
             lang("Notice Period Extension", "Verlängerung Kündigungsfrist"),
-            check_index(extension_lst, 0),
-            check_index(extension_lst, 1), "stack_3"]],
+            check_index(notice_ext_lst, 0),
+            check_index(notice_ext_lst, 1), "stack_3"]],
         columns=["task", "start", "end", "stack"]))
 
     # Insert incapacity dict into dataframe
-    for key, value in incap_dct.items():
-        for incap_sublst in value:
-            if incap_sublst != []:
-                df_lst.append(pd.DataFrame(
-                    data=[[
-                        lang("Incapacity", "Krankheit"),
-                        incap_sublst[0].datetime.date(),
-                        incap_sublst[1].datetime.date(),
-                        "stack_3"]],
-                    columns=["task", "start", "end", "stack"]))
+    for incap_sublst in incap_masterlst:
+        if incap_sublst != []:
+            df_lst.append(pd.DataFrame(
+                data=[[
+                    lang("Incapacity", "Arbeitsunfähigkeit"),
+                    incap_sublst[0].datetime.date(),
+                    incap_sublst[1].datetime.date(),
+                    "stack_4"]],
+                columns=["task", "start", "end", "stack"]))
 
     # Insert place holders into dataframe
     df_lst.append(pd.DataFrame(
@@ -1974,17 +1987,18 @@ def main():
                 y="stack",
                 opacity=1,
                 color="task",
-                color_discrete_sequence=["#ffffff", # Placeholder
-                                         "#f032e6", # Sick Pay
-                                         "#f58231", # Probation Period
-                                         "#42d4f4", # Extension Probation Period
-                                         "#3cb44b", # Regular employment
-                                         "#000075", # Notice period
-                                         "#4363d8", # Compensation missed Notice Period
-                                         "#e6194B", # Embargo Period
-                                         "#911eb4", # Notice Period Extension
-                                         "#800000", # Incapacity 1
-                                         "#ffffff"], # Placeholder
+                color_discrete_map={
+                    "[PH_T]": "#ffffff",
+                    "Sick Pay": "#f032e6", "Lohnfortzahlung": "#f032e6",
+                    "Probation Period": "#f58231", "Probezeit": "#f58231",
+                    "Regular Employment": "#3cb44b", "Reguläre Anstellung": "#3cb44b",
+                    "Notice Period": "#000075", "Kündigungsfrist": "#000075",
+                    "Compensation Missed Notice Period": "#4363d8", "Kompensation verpasste Kündigungsfrist": "#4363d8",
+                    "Sperrfrist": "#e6194B", "Embargo Period": "#e6194B",
+                    "Notice Period Extension": "#911eb4", "Verlängerung Kündigungsfrist": "#911eb4",
+                    "Incapacity": "#9A6324", "Arbeitsunfähigkeit": "#9A6324",
+                    "[PH_B]": "#ffffff",
+                },
                 width=1000,
                 height=700,
                 hover_name="task",
@@ -2060,12 +2074,12 @@ def main():
         # Plotly output to PyWebIO
         plotly_html = fig.to_html(include_plotlyjs="require", full_html=False, config=config)
         output.put_markdown(lang("""
-        ## Interactive Viszualization
+        ## Visualization
 
         IMPORTANT: The chart below is intended only as a visual aide. Please consult the tables above for your results.
 
         """, """
-        ## Interaktive Visualisierung
+        ## Visualisierung
 
         WICHTIG: Die nachfolgende Grafik ist nur als visuelle Hilfe gedacht. Ihre Ergebnisse entnehmen Sie bitte der Tabelle hiervor.
 

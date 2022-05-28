@@ -235,15 +235,14 @@ def populate_dct(in_dct):
 
 # Function to merge overlapping date ranges
 def merge(lst):
-    input = []
-    # Exclude empty lists
-    for sublst in lst:
-        if sublst != []:
-            input.append(sublst)
-    intervals = [portion.closed(a, b) for a, b in input]
-    merge = portion.Interval(*intervals)
-    merge = [[i.lower, i.upper] for i in merge]
-    return merge
+    # Do not merge empty litss
+    if lst != []:
+        intervals = [portion.closed(a, b) for a, b in lst]
+        merge = portion.Interval(*intervals)
+        merge = [[i.lower, i.upper] for i in merge]
+        return merge
+    else:
+        return lst
 
 # Function to check if a given date is a holiday
 # Source: https://www.bj.admin.ch/dam/bj/de/data/publiservice/service/zivilprozessrecht/kant-feiertage.pdf
@@ -316,7 +315,6 @@ def clamp(n, minn, maxn):
 
 
 # --- MAIN FNCTION --- #
-
 def main():
 
 
@@ -1154,10 +1152,10 @@ def main():
     # Prepare list of merged incap periods
     # Flatten dictionary values
     incap_masterlst = flat(list(incap_dct.values()))
-    # Merge overlapping periods
-    incap_masterlst = merge(incap_masterlst)
     # Remove empty nested lists
     incap_masterlst = purify(incap_masterlst)
+    # Merge overlapping periods
+    incap_masterlst = merge(incap_masterlst)
 
     # --- TRIAL PERIOD --- #
 
@@ -1350,14 +1348,15 @@ def main():
         # Count claimed total of days
         embargo_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
 
+    # --- Cleanup --- #
 
     # Prepare list of merged embargo periods
     # Flatten dictionary values
     embargo_masterlst = flat(list(embargo_dct.values()))
-    # Merge overlapping periods
-    embargo_masterlst = merge(embargo_masterlst)
     # Remove empty nested lists
     embargo_masterlst = purify(embargo_masterlst)
+    # Merge overlapping periods
+    embargo_masterlst = merge(embargo_masterlst)
 
 
     # --- TERMINATION AND NOTICE PERIOD --- #
@@ -1396,34 +1395,36 @@ def main():
         # Calculate new employment end date
         new_employment_edt = notice_period_lst[-1]
 
-        # Calculate total notice overlap, i.e. how many days of original notice period were missed
-        notice_overlap = 0
-        # Duration of original notice period
-        for embargo_sublst in embargo_masterlst:
-            notice_overlap += overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
+        # Only calculate if incap has occured
+        if incapacity_type != False:
+
+            # Calculate total notice overlap, i.e. how many days of original notice period were missed
+            notice_overlap = 0
+            # Duration of original notice period
+            for embargo_sublst in embargo_masterlst:
+                notice_overlap += overlap_calc(notice_period_lst[0], embargo_sublst[0], notice_period_lst[1], embargo_sublst[1])
 
 
-        # Shift missed notice period days, start and end date
-        if notice_overlap != 0:
+            # Shift missed notice period days, start and end date
+            if notice_overlap != 0:
 
-            notice_comp_lst.append(notice_period_lst[1].shift(days=+1))
-            notice_comp_lst.append(notice_period_lst[1].shift(days=+notice_overlap))
-            # Handle consecutive interruptions of notice period
-            notice_comp_lst = grow(notice_comp_lst, embargo_masterlst) 
+                notice_comp_lst.append(notice_period_lst[1].shift(days=+1))
+                notice_comp_lst.append(notice_period_lst[1].shift(days=+notice_overlap))
+                # Handle consecutive interruptions of notice period
+                notice_comp_lst = grow(notice_comp_lst, embargo_masterlst) 
 
-            # Create extension if needed
-            if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
-                notice_ext_lst.insert(0, notice_comp_lst[1].shift(days=+1))
-                notice_ext_lst.insert(1, push_endpoint(notice_comp_lst[1], endpoint))
-                single_date(notice_ext_lst, 0, 1)
-                new_employment_edt = notice_ext_lst[1]
-                notice_extension_dur = period_duration(notice_ext_lst[0], notice_ext_lst[1])
-            else:
-                new_employment_edt = notice_comp_lst[1]
-                notice_extension_dur = 0
-
-            # Calculate total overlap
-            notice_overlap += notice_extension_dur
+                # Create extension if needed
+                if not endpoint in ["Termination date anytime", "Kündigungstermin jederzeit"]:
+                    notice_ext_lst.insert(0, notice_comp_lst[1].shift(days=+1))
+                    notice_ext_lst.insert(1, push_endpoint(notice_comp_lst[1], endpoint))
+                    single_date(notice_ext_lst, 0, 1)
+                    new_employment_edt = notice_ext_lst[1]
+                else:
+                    new_employment_edt = notice_comp_lst[1]
+        
+        # Set variables if no incaps were given
+        else:
+            notice_overlap = 0
 
     # Set termination date to regular employment endt date if no termination date was given
     else: 
@@ -1546,10 +1547,10 @@ def main():
         # Prepare list of merged embargo periods
         # Flatten dictionary values
         sickpay_masterlst = flat(list(sickpay_dct.values()))
-        # Merge overlapping periods
-        sickpay_masterlst = merge(sickpay_masterlst)
         # Remove empty nested lists
         sickpay_masterlst = purify(sickpay_masterlst)
+        # Merge overlapping periods
+        sickpay_masterlst = merge(sickpay_masterlst)
 
 
     # --- EVALUATION AND CLEANUP --- #
@@ -1570,27 +1571,11 @@ def main():
     if (termination_occurence == True) and termination_dt.is_between(trial_lst[0], trial_lst[-1], "[]"):
         termination_case = "trial_case"
     # Termination during embargo period
-    if (termination_occurence == True):
+    if (termination_occurence == True) and (incapacity_type != False):
         for embargo_sublst in embargo_masterlst:
             if termination_dt.is_between(embargo_sublst[0], embargo_sublst[-1], "[]"):
                 termination_case = "embargo_case"
                 break
-
-    # --- Cleanup sick pay  --- #
-    
-    # Delete sick pay after valid termination
-    if termination_case == ("standard_case" or "trial_case"):
-        for sickpay_sublst in sickpay_masterlst:
-
-            # Delete sick pay that starts after end of employment
-            if sickpay_sublst[0] > new_employment_edt:
-                sickpay_sublst.clear() # Clear list
-                continue
-
-            # Cap sick pay that surpasses end of employment
-            if new_employment_edt.is_between(sickpay_sublst[0], sickpay_sublst[1], "[]"):
-                sickpay_sublst[1] = new_employment_edt
-                continue
 
 
     # --- Termination case: No case --- #
@@ -1624,9 +1609,12 @@ def main():
         # Adjust notice period
         notice_period_lst[0] = termination_dt.shift(days=+1)
         notice_period_lst[1] = termination_dt.shift(days=+trial_notice_period)
+        notice_ext_lst.clear()
+        notice_comp_lst.clear()
         notice_overlap = 0
         reg_employment_lst.clear()
         embargo_dct.clear()
+        embargo_masterlst.clear()
         new_employment_edt = notice_period_lst[-1]
 
 
@@ -1639,8 +1627,25 @@ def main():
         notice_period_lst.clear()
         notice_overlap = 0
         reg_employment_lst[1] = reg_employment_lst[1].shift(years=+3) # showing that employment continues
+        notice_comp_lst.clear()
         notice_ext_lst.clear()
         new_employment_edt = lang("[--> No valid termination]", "[--> Keine gültige Kündigung]")
+
+    # --- Cleanup sick pay  --- #
+    
+    # Delete sick pay after valid termination
+    if termination_case == ("standard_case" or "trial_case"):
+        for sickpay_sublst in sickpay_masterlst:
+
+            # Delete sick pay that starts after end of employment
+            if sickpay_sublst[0] > new_employment_edt:
+                sickpay_sublst.clear() # Clear list
+                continue
+
+            # Cap sick pay that surpasses end of employment
+            if new_employment_edt.is_between(sickpay_sublst[0], sickpay_sublst[1], "[]"):
+                sickpay_sublst[1] = new_employment_edt
+                continue
 
 
     # --- OUTPUT SUMMARY --- #
@@ -1704,6 +1709,7 @@ def main():
                 output.put_markdown(lang("""**Duration**""", """**Dauer**""")), None,
                 ])
 
+            # List incapacities (dict is used for incap number)
             for key, value in incap_dct.items():
                 for incap_sublst in value:
                     if incap_sublst != []:
@@ -1753,8 +1759,7 @@ def main():
 
             # Count
             i = 1
-            for embargo_sublst in value:
-                if embargo_sublst != []:
+            for embargo_sublst in embargo_masterlst:
                     output.put_row([
                         output.put_text(str(i)), None,
                         output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
@@ -1790,14 +1795,13 @@ def main():
             # Count iterations
             i = 1
             for sickpay_sublst in sickpay_masterlst:
-                if sickpay_sublst != []:
-                    output.put_row([
-                        output.put_text(str(i)), None,
-                        output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
-                        output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
-                        output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
-                        ], scope="scope_res_sp")
-                    i += 1
+                output.put_row([
+                    output.put_text(str(i)), None,
+                    output.put_text(sickpay_sublst[0].format("DD.MM.YYYY")), None,
+                    output.put_text(sickpay_sublst[1].format("DD.MM.YYYY")), None,
+                    output.put_text(str(period_duration(sickpay_sublst[0], sickpay_sublst[1])) + lang(" days", " Tage")), None,
+                    ], scope="scope_res_sp")
+                i += 1
 
             output.put_row([
                 output.put_text(""), None,
@@ -1832,8 +1836,8 @@ def main():
                 try:
                     output.put_row([
                         output.put_text(lang("Notice Period Compensation", "Kompensation Kündigungsfrist")), None,
-                        output.put_text(notice_period_lst[2].format("DD.MM.YYYY")), None,
-                        output.put_text(notice_period_lst[3].format("DD.MM.YYYY")), None,
+                        output.put_text(notice_comp_lst[0].format("DD.MM.YYYY")), None,
+                        output.put_text(notice_comp_lst[1].format("DD.MM.YYYY")), None,
                         output.put_text(str(period_duration(notice_comp_lst[0], notice_comp_lst[1])) + lang(" days", " Tage")), None,
                     ])
                 except IndexError:
@@ -1920,8 +1924,8 @@ def main():
         columns=["task", "start", "end", "stack"]))
 
     # Insert embargo period dict into dataframe
-    for embargo_sublst in embargo_masterlst:
-        if embargo_sublst != []:
+    if incapacity_type != False:
+        for embargo_sublst in embargo_masterlst:
             df_lst.append(pd.DataFrame(
                 data=[[
                 lang("Embargo Period", "Sperrfrist"),
@@ -1957,15 +1961,16 @@ def main():
         columns=["task", "start", "end", "stack"]))
 
     # Insert incapacity dict into dataframe
-    for incap_sublst in incap_masterlst:
-        if incap_sublst != []:
-            df_lst.append(pd.DataFrame(
-                data=[[
-                    lang("Incapacity", "Arbeitsunfähigkeit"),
-                    incap_sublst[0].datetime.date(),
-                    incap_sublst[1].datetime.date(),
-                    "stack_4"]],
-                columns=["task", "start", "end", "stack"]))
+    if incapacity_type != False:
+        for incap_sublst in incap_masterlst:
+            if incap_sublst != []:
+                df_lst.append(pd.DataFrame(
+                    data=[[
+                        lang("Incapacity", "Arbeitsunfähigkeit"),
+                        incap_sublst[0].datetime.date(),
+                        incap_sublst[1].datetime.date(),
+                        "stack_4"]],
+                    columns=["task", "start", "end", "stack"]))
 
     # Insert place holders into dataframe
     df_lst.append(pd.DataFrame(

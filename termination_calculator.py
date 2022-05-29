@@ -899,15 +899,11 @@ def main():
 
             Please specify on which date the service started and on which it ended.
 
-            Notes:
-            - 
             ""","""
-            ### Militär-, Zivil- oder Schutzdienst
+            ### Militär-, Zivil- oder Schutzdienst ###
 
             Bitte geben Sie das Start- und Enddatum des Dienstes an.
 
-            Hinweise:
-            -
             """))
 
 
@@ -951,6 +947,7 @@ def main():
             Please specify on which date the pregnancy commenced the date of confinement.
 
             Notes:
+            - It is assumed that the requirements for maternity pay according to [Art. 16b EOG](https://www.fedlex.admin.ch/eli/cc/1952/1021_1046_1050/de#art_16_d=) are satisfied.
             - The federal court has decided in BGE 143 III 21 that the pregnancy begins on the day the egg is fertilised.
             - Any natural termination of the pregnancy counts as confinement, including premature birth or miscarriage, not so abortions.
             - If the child has not yet been born, enter an approximate date.
@@ -960,6 +957,7 @@ def main():
             Bitte geben Sie das Datum für den Beginn der Schwangerschaft und das Datum der Niederkunft an.
 
             Hinweise:
+            - Es wird agenommen, dass die Voraussetzungen für die Entrichtung einer Mutterschaftsentschädigung nach [Art. 16b EOG](https://www.fedlex.admin.ch/eli/cc/1952/1021_1046_1050/de#art_16_d=) erfüllt sind.
             - Das Bundesgericht hat in BGE 143 III 21 entschieden, dass die Schwangerschaft mit der Befruchtung der Eizelle beginnt.
             - Als Niederkunft gilt jede natürliche Befreiung von der Schwangerschaft, d.h. auch Früh- oder Fehlgeburten, nicht aber Schwangerschaftsabbrüche.
             - Falls das Kind noch nicht geboren ist, geben Sie ein ungefähres Datum an.
@@ -982,7 +980,7 @@ def main():
                     placeholder="DD.MM.YYYY"),
             # End of incapacity
             input.input(lang(
-                    "Date of childbirth",
+                    "Date of confinement",
                     "Datum der Niederkunft"),
                     name="preg_edt",
                     type=input.TEXT,
@@ -1003,7 +1001,6 @@ def main():
             ### Termination (by employer)
 
             Please specify on which date the termination was (or shall be) received, the duration of the notice period and the projected end date of employment.
-            - 
             ""","""
             ### Kündigung (durch Arbeitgeber)
 
@@ -1077,16 +1074,10 @@ def main():
             ### Probation Period Termination
 
             You have chosen to evaluate both probation period and termination: Please specify the length of the notice period for the probation period (in days).
-
-            Notes:
-            - 
             ""","""
             ### Kündigung Probezeit
 
             Sie wollen Kündigung und Probezeit auswerten: Bitte geben Sie die Kündigungsfrist für die Probezeit an (in Tagen).
-
-            Hinweise:
-            -
             """))
 
     # User input: Trial termination (block optional)
@@ -1225,8 +1216,6 @@ def main():
     # Selected case type
     if incapacity_type == "illacc":
 
-        # Keep score of total
-        embargo_claimed_total = 0
         # Loop through incapacities by incapacity
         for key, value in embargo_dct.items():
 
@@ -1309,9 +1298,6 @@ def main():
                     embargo_negative.append(new_embargo_sublist)
                     # Count used days
                     embargo_claimed_loop += period_duration(new_embargo_sublist[0], new_embargo_sublist[1])
-            
-                # Count claimed total of days
-                embargo_claimed_total += embargo_claimed_loop
 
 
     # --- CASE: MILITARY OR CIVIL SERVICE --- #
@@ -1320,9 +1306,7 @@ def main():
     if incapacity_type == "milservice":
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
-                # Set sick pay (Erwerbsersatz) during milservice, calculate total
-                sickpay_dct[1] = [[embargo_sublst[0], embargo_sublst[1]]]
-                sick_pay_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
+
                 # Check if milservice duration was over 11 days
                 milservice_dur = period_duration(embargo_sublst[0], embargo_sublst[1])
                 if milservice_dur > 11:
@@ -1331,8 +1315,20 @@ def main():
                     # Set embargo end to 4 weeks after
                     embargo_sublst[1] = embargo_sublst[1].shift(weeks=+4, days=+1)
 
-        # Count claimed total of days
-        embargo_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
+                # Delete if embargo ended before regular employment
+                if reg_employment_lst[0] >= embargo_sublst[1]:
+                    embargo_sublst.clear() # Clear list
+                    continue
+
+                # Set embargo beginning at start of reg employment
+                embargo_sublst[0] = max(reg_employment_lst[0], embargo_sublst[0])
+
+                # Forward beginning to regular employment end date
+                if reg_employment_lst[0] >= embargo_sublst[0]:
+                    embargo_sublst[0] = reg_employment_lst[0]
+
+                # Set sick pay (Erwerbsersatz) during milservice, calculate total
+                sickpay_dct[1] = [[embargo_sublst[0], embargo_sublst[1]]]
 
 
     # --- CASE: PREGNANCY --- #
@@ -1341,14 +1337,26 @@ def main():
     if incapacity_type == "preg":
         for key, value in embargo_dct.items():
             for embargo_sublst in value:
+                
                 # Set sick pay (maternity pay) to 14 weeks after confinement
                 sickpay_dct[1] = [[embargo_sublst[1], embargo_sublst[1].shift(weeks=14, days=-1)]]
-                # Extend to 16 weeks after confinement
+                
+                # Extend embargo to 16 weeks after confinement
                 embargo_sublst[1] = embargo_sublst[1].shift(weeks=16, days=-1)
                 sick_pay_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
 
-        # Count claimed total of days
-        embargo_claimed_total = period_duration(embargo_sublst[0], embargo_sublst[1])
+                # Delete if embargo ended before regular employment
+                if reg_employment_lst[0] >= embargo_sublst[1]:
+                    embargo_sublst.clear() # Clear list
+                    continue
+
+                # Set embargo beginning at start of reg employment
+                embargo_sublst[0] = max(reg_employment_lst[0], embargo_sublst[0])
+
+                # Forward beginning to regular employment end date
+                if reg_employment_lst[0] >= embargo_sublst[0]:
+                    embargo_sublst[0] = reg_employment_lst[0]
+
 
     # --- Cleanup --- #
 
@@ -1518,10 +1526,11 @@ def main():
                     continue
 
                 # Calculate sick pay according to service year
-                if sickpay_sublst[0] < syears[1]:
+                if syears[key] == syears[1]:
                     sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(weeks=+3, days=-1))
                 else:
-                    sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(**{unit:(pay_matrix[canton][sick_pay_syear_start_index])}, days=-1))
+                    # Add +1 to move query to the right index in sick pay matrix
+                    sick_pay_cap = period_duration(sickpay_sublst[0], sickpay_sublst[0].shift(**{unit:(pay_matrix[canton][key - 1])}, days=-1))
 
                 # Check if cap has been exceeded
                 if sick_pay_claimed_loop >= sick_pay_cap:
@@ -1545,14 +1554,14 @@ def main():
             if sickpay_dct[key] == []:
                 del sickpay_dct[key]
 
-        # Merge overlapping dictionary values for each year
-        # Prepare list of merged embargo periods
-        # Flatten dictionary values
-        sickpay_masterlst = flat(list(sickpay_dct.values()))
-        # Remove empty nested lists
-        sickpay_masterlst = purify(sickpay_masterlst)
-        # Merge overlapping periods
-        sickpay_masterlst = merge(sickpay_masterlst)
+    # Merge overlapping dictionary values for each year
+    # Prepare list of merged embargo periods
+    # Flatten dictionary values
+    sickpay_masterlst = flat(list(sickpay_dct.values()))
+    # Remove empty nested lists
+    sickpay_masterlst = purify(sickpay_masterlst)
+    # Merge overlapping periods
+    sickpay_masterlst = merge(sickpay_masterlst)
 
 
     # --- EVALUATION AND CLEANUP --- #
@@ -1636,7 +1645,7 @@ def main():
     # --- Cleanup sick pay  --- #
     
     # Delete sick pay after valid termination
-    if termination_case == ("standard_case" or "trial_case"):
+    if (termination_case == "standard_case") or (termination_case == "trial_case"):
         for sickpay_sublst in sickpay_masterlst:
 
             # Delete sick pay that starts after end of employment
@@ -1690,13 +1699,13 @@ def main():
 
         if termination_occurence != False:
             output.put_row([
-                output.put_markdown(lang("""**Employment End Date:**""", """**Enddatum Anstellung:**""")), None,
-                output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
+                output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist:**""")), None,
+                output.put_markdown(str(notice_overlap)),
                 None
             ], size="35% 10px auto")
             output.put_row([
-                output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist:**""")), None,
-                output.put_markdown(str(notice_overlap)),
+                output.put_markdown(lang("""**Employment End Date:**""", """**Enddatum Anstellung:**""")), None,
+                output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
                 None
             ], size="35% 10px auto")
 
@@ -1759,29 +1768,6 @@ def main():
 
     # Scope for the summary of any embargo periods
     with output.use_scope("scope_res_embargo"):
-
-        # List embargo periods by incap to see max
-        output.put_markdown(lang("""### Embargo Periods (sorted by incapacity)""", """### Sperrfristen (sortiert nach Arbeitsunfähigkeit)""")).style('margin-top: 20px'), None,
-        if incapacity_type != False:
-
-            output.put_row([
-                output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
-                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
-                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
-                output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
-                )])
-
-            i = 0
-            for value in embargo_dct.values():
-                for embargo_sublst in value:
-                    if embargo_sublst != []:
-                        output.put_row([
-                            output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
-                            output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
-                            output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
-                            output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
-                            ], scope="scope_res_embargo")
-                        i += 1
 
         output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'), None,
         if incapacity_type != False:

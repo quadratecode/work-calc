@@ -1700,6 +1700,12 @@ def main():
                 None
             ], size="35% 10px auto")
 
+        if (termination_occurence == False) and (trial_relevance == False):
+            output.put_row([
+                output.put_markdown(lang("""[--> Please see below for detailed breakdown of embargo and sick pay periods]""", """[--> Bitte konsultieren Sie die untenstehende Auflistung der Sperr- und Lohnfortzahlungsfristen""")), None,
+                None
+            ])
+
     # Start of detailed results
 
     # Scope for the summary of incapacities as declared by user input
@@ -1754,7 +1760,30 @@ def main():
     # Scope for the summary of any embargo periods
     with output.use_scope("scope_res_embargo"):
 
-        output.put_markdown(lang("""### Embargo Periods""", """### Sperrfristen """)).style('margin-top: 20px'), None,
+        # List embargo periods by incap to see max
+        output.put_markdown(lang("""### Embargo Periods (sorted by incapacity)""", """### Sperrfristen (sortiert nach Arbeitsunfähigkeit)""")).style('margin-top: 20px'), None,
+        if incapacity_type != False:
+
+            output.put_row([
+                output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
+                )])
+
+            i = 0
+            for value in embargo_dct.values():
+                for embargo_sublst in value:
+                    if embargo_sublst != []:
+                        output.put_row([
+                            output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
+                            output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
+                            output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
+                            output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
+                            ], scope="scope_res_embargo")
+                        i += 1
+
+        output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'), None,
         if incapacity_type != False:
 
             output.put_row([
@@ -1774,14 +1803,6 @@ def main():
                         output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
                         ], scope="scope_res_embargo")
                     i += 1
-
-            # Append totals to embargo and sick pay output as evaluated above
-            output.put_row([
-                output.put_text(), None,
-                output.put_text(""), None,
-                output.put_text("Total:"), None,
-                output.put_text(str(embargo_claimed_total) + lang(" days", " Tage")), None,
-                ])
 
         else:
             output.put_markdown(lang("""[--> No embargo periods evaluated]""", """[--> Keine Sperrfristen ausgewertet]""")), None,
@@ -1810,12 +1831,6 @@ def main():
                     ], scope="scope_res_sp")
                 i += 1
 
-            output.put_row([
-                output.put_text(""), None,
-                output.put_text(""), None,
-                output.put_text("Total:"), None,
-                output.put_text(str(sick_pay_claimed_total) + lang(" days", " Tage")), None,
-                ])
         else:
             output.put_markdown(lang("""[--> No sick pay periods evaluated]""", """[--> Keine Lohnfortzahlungsfristen ausgewertet]""")), None,
 

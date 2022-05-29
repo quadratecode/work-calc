@@ -442,6 +442,7 @@ def main():
 
             Notes:
             - The first day of work can be different from the starting date of the employment contract.
+            - The first day fully available to the parties counts as first day of work.
             - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
             ### Arbeitsverhältnis
@@ -450,6 +451,7 @@ def main():
 
             Hinweise:
             - Der Tag des Stellenantritts kann vom Anfangsdatum des Arbeitsvertrags abweichen.
+            - Als Tag des Stellenatritts gilt der erste Arbeitstag, der vollumfänglich zur Verfügung stand.
             - Geben Sie Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020)
             """))
 
@@ -1662,36 +1664,41 @@ def main():
 
         output.put_markdown(lang("""## Key Results""", """## Wichtigste Resultate""")).style('margin-top: 20px'), None,
 
-        output.put_row([
-            output.put_markdown(lang("""**Validity of Termination:**""", """**Gültigkeit Kündigung:**""")), None,
-            output.put_markdown(termination_validity),
-            None
-        ], size="35% 10px auto")
-        output.put_row([
-            output.put_markdown(lang("""**Reason:**""", """**Begründung:**""")), None,
-            output.put_markdown(reason),
-            None
-        ], size="35% 10px auto")
-        output.put_row([
-            output.put_markdown(lang("""**Employment End Date:**""", """**Enddatum Anstellung:**""")), None,
-            output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
-            None
-        ], size="35% 10px auto")
-        output.put_row([
-            output.put_markdown(lang("""**Probation Period End Date:**""", """**Enddatum Probezeit:**""")), None,
-            output.put_markdown(trial_lst[-1].format("DD.MM.YYYY")),
-            None
-        ], size="35% 10px auto")
-        output.put_row([
-            output.put_markdown(lang("""**Total Extension Probation Period:**""", """**Gesamtverlängerung Probezeit:**""")), None,
-            output.put_markdown(str(trial_extension_dur)),
-            None
-        ], size="35% 10px auto")
-        output.put_row([
-            output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist:**""")), None,
-            output.put_markdown(str(notice_overlap)),
-            None
-        ], size="35% 10px auto")
+        if termination_occurence != False:
+            output.put_row([
+                output.put_markdown(lang("""**Validity of Termination:**""", """**Gültigkeit Kündigung:**""")), None,
+                output.put_markdown(termination_validity),
+                None
+            ], size="35% 10px auto")
+            output.put_row([
+                output.put_markdown(lang("""**Reason:**""", """**Begründung:**""")), None,
+                output.put_markdown(reason),
+                None
+            ], size="35% 10px auto")
+
+        if trial_relevance != False:
+            output.put_row([
+                output.put_markdown(lang("""**Missed Workdays Probation Period:**""", """**Verpasste Arbeitstage Probezeit:**""")), None,
+                output.put_markdown(str(trial_extension_dur)),
+                None
+            ], size="35% 10px auto")
+            output.put_row([
+                output.put_markdown(lang("""**Probation Period End Date:**""", """**Enddatum Probezeit:**""")), None,
+                output.put_markdown(trial_lst[-1].format("DD.MM.YYYY")),
+                None
+            ], size="35% 10px auto")
+
+        if termination_occurence != False:
+            output.put_row([
+                output.put_markdown(lang("""**Employment End Date:**""", """**Enddatum Anstellung:**""")), None,
+                output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
+                None
+            ], size="35% 10px auto")
+            output.put_row([
+                output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist:**""")), None,
+                output.put_markdown(str(notice_overlap)),
+                None
+            ], size="35% 10px auto")
 
     # Start of detailed results
 

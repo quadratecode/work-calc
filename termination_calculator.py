@@ -53,7 +53,7 @@ def lang(eng, german):
 
 # Funtion to validate tc checkbox
 def check_tc(data):
-    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in data:
+    if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen") in data:
         output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."),
                             closable=True,
                             scope="scope_input_instructions")
@@ -343,7 +343,7 @@ def main():
             Give it a try!
             ""","""
             Waren Sie wegen Krankheit, Unfall, Militärdienst oder Schwangerschaft arbeitsunfähig?
-            Mit dieser App können berechnet werden:
+            Mit dieser App können evaluiert werden werden:
             - Verlängerung der Probezeit
             - Kündigungsfristen
             - Sperrfristen
@@ -364,7 +364,7 @@ def main():
             - Contractual agreements that differ from the possible inputs
             ""","""
             ----
-            **Diese App befindet sich derzeit im Betatest. [Feedback](mailto:rm@llq.ch) ist sehr wilkommen.**
+            **Diese App befindet sich derzeit im Betatest. Über [Feedback](mailto:rm@llq.ch) bin ich dankbar.**
             
             Die folgenden Fallkonstellationen können nicht ausgewertet werden:
             - Befristete Arbeitsverhältnisse
@@ -429,7 +429,7 @@ def main():
     # Terms and conditions
     input.checkbox(
         options=[
-            lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.")],
+            lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen")],
         validate=check_tc)
 
     with output.use_scope("scope_progress"):
@@ -446,7 +446,7 @@ def main():
             Notes:
             - The first day of work can be different from the starting date of the employment contract.
             - The first day fully available to the parties counts as first day of work.
-            - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
+            - Enter all dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
             ### Arbeitsverhältnis
 
@@ -455,7 +455,7 @@ def main():
             Hinweise:
             - Der Tag des Stellenantritts kann vom Anfangsdatum des Arbeitsvertrags abweichen.
             - Als Tag des Stellenatritts gilt der erste Arbeitstag, der vollumfänglich zur Verfügung stand.
-            - Geben Sie Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020)
+            - Geben Sie sämtliche Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020).
             """))
 
     # User Input: Employment data (block required)
@@ -669,7 +669,7 @@ def main():
             Notes:
             - Enter the periods in chronological order.
             - If only one continuous period occurred, leave the remaining form fields empty.
-            - Enter dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
+            - Enter all dates in the following format: DD.MM.YYYY (e.g. 01.01.2020, 16.05.2020, 07.12.2020)
             ""","""
             ### Arbeitsunfähigkeit zufolge Krankheit oder Unfall
 
@@ -679,7 +679,7 @@ def main():
             Hinweise:
             - Tragen Sie die Zeitperioden in chronologischer Reihenfolge ein.
             - Sollten Sie während einer einzelnen, zusammenhängenden Zeitperiode abwesend gewesen sein, lassen Sie die restlichen Formularfelder leer.
-            - Geben Sie Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020)
+            - Geben Sie sämtliche Daten in folgendem Format ein: DD.MM.YYYY (bspw. 01.01.2020, 16.05.2020, 07.12.2020).
             """))
 
     # User input: First illacc (alternate block)
@@ -1723,7 +1723,7 @@ def main():
 
         if (termination_occurence == False) and (trial_relevance == False):
             output.put_row([
-                output.put_markdown(lang("""[--> Please see below for detailed breakdown of embargo and sick pay periods]""", """[--> Bitte konsultieren Sie die untenstehende Auflistung der Sperr- und Lohnfortzahlungsfristen""")), None,
+                output.put_markdown(lang("""[--> Please see below for detailed breakdown of embargo and sick pay periods]""", """[--> Bitte konsultieren Sie die untenstehende Auflistung der Sperr- und Lohnfortzahlungsfristen]""")), None,
                 None
             ])
 

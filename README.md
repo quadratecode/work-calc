@@ -14,14 +14,17 @@ A web app to check the temporal validity of your termination and to calculate an
 - [x] The notice period duration incl. a possible extension
 - [x] Leap years are respected
 - [x] Changes in seniority during an incapacity are respected
+- [x] Optionality of certain inputs
+- [x] User defined inputs
+- [x] Different incapacities to work (e.g. military service) and combinations thereof
+- [x] Single or multiple incapacity with gaps
 
 ## Planned
 
-- [ ] Make certain inputs optional, e.g. only check probation period without incapacity
-- [ ] Allow user defined inputs
-- [ ] Different incapacities to work (e.g. military service) and combinations thereof
-- [ ] A single incapacity with gaps
-- [ ] Multiple incapacities, with or without gaps
+- [ ] Further expand user defined inputs
+- [ ] Further improve layout and explanation of output
+- [ ] Allow mixing of different incapacity types
+- [ ] Quality testing
 
 # Contribute
 

@@ -327,7 +327,7 @@ def main():
 
     # --- INPUT --- #
     
-    output.put_markdown(lang("""# Employment Calculator""", """# Arbeitsrechner"""))
+    output.put_markdown(lang("""# Calculator Labour Law""", """# Rechner Arbeitsrecht"""))
 
     # User info: Landing page
     with output.use_scope("scope_input_instructions"):
@@ -409,7 +409,7 @@ def main():
             """)),
             output.put_html("""
                 <a target="_blank" href="https://www.pyweb.io/">[1] PyWebIO</a> <br>
-                <a target="_blank" href="https://github.com/quadratecode/ch-termination-calc">[2] GitHub Repository</a>
+                <a target="_blank" href="https://github.com/quadratecode/work-calc">[2] GitHub Repository</a>
             """)]).style('margin-top: 20px')
 
         output.put_markdown(lang("""

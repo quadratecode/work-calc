@@ -51,11 +51,10 @@ def lang(eng, german):
     else:
         return eng
 
-# Funtion to validate checkbox
+# Funtion to validate tc checkbox
 def check_tc(data):
     if not lang("I accept the terms and conditions", "Ich akzeptiere die Nutzungsbedingungen.") in data:
-        output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."
-                                "ERROR: Bitte überprüfen Sie Ihre Eingabe. Die Daten müssen chronologisch sortiert sein (ältestes bis jüngstes)."),
+        output.put_error(lang("ERROR: You must accept the terms and conditions to continue.", "ERROR: Bitte akzeptieren Sie die Nutzungsbedingungen."),
                             closable=True,
                             scope="scope_input_instructions")
         return ("", "")
@@ -235,12 +234,16 @@ def populate_dct(in_dct):
 
 # Function to merge overlapping date ranges
 def merge(lst):
-    # Do not merge empty litss
+    # Do not merge empty lits
     if lst != []:
         intervals = [portion.closed(a, b) for a, b in lst]
         merge = portion.Interval(*intervals)
         merge = [[i.lower, i.upper] for i in merge]
-        return merge
+        # Hotfix for rare error where inf is returned (investigate)
+        if merge != [[portion.inf, -portion.inf]]:
+            return merge
+        else:
+            return lst
     else:
         return lst
 
@@ -324,7 +327,7 @@ def main():
 
     # --- INPUT --- #
     
-    output.put_markdown(lang("""# Employment Calculator""", """# Rechner Arbeitsverhältnis"""))
+    output.put_markdown(lang("""# Employment Calculator""", """# Arbeitsrechner"""))
 
     # User info: Landing page
     with output.use_scope("scope_input_instructions"):
@@ -1206,7 +1209,7 @@ def main():
         reg_employment_lst[0] = trial_lst[-1].shift(days=+1)
 
         # Count probation period extension
-        trial_extension_dur = len(repeated_workdays)
+        trial_extension_dur = len(missed_workdays)
     else:
         trial_extension_dur = 0
 
@@ -1339,7 +1342,7 @@ def main():
             for embargo_sublst in value:
                 
                 # Set sick pay (maternity pay) to 14 weeks after confinement
-                sickpay_dct[1] = [[embargo_sublst[1], embargo_sublst[1].shift(weeks=14, days=-1)]]
+                sickpay_dct[1] = [[embargo_sublst[1], embargo_sublst[1].shift(weeks=14)]]
                 
                 # Extend embargo to 16 weeks after confinement
                 embargo_sublst[1] = embargo_sublst[1].shift(weeks=16, days=-1)
@@ -1642,9 +1645,8 @@ def main():
         notice_ext_lst.clear()
         new_employment_edt = lang("[--> No valid termination]", "[--> Keine gültige Kündigung]")
 
-    # --- Cleanup sick pay  --- #
-    
-    # Delete sick pay after valid termination
+    # --- Cleanup sick pay and embargo periods --- #
+    # Delete sick pay and embargo periods after valid terminatio
     if (termination_case == "standard_case") or (termination_case == "trial_case"):
         for sickpay_sublst in sickpay_masterlst:
 
@@ -1657,6 +1659,16 @@ def main():
             if new_employment_edt.is_between(sickpay_sublst[0], sickpay_sublst[1], "[]"):
                 sickpay_sublst[1] = new_employment_edt
                 continue
+
+        for embargo_sublst in embargo_masterlst:
+
+            # Delete embargo that starts after end of employment
+            if embargo_sublst[0] > new_employment_edt:
+                embargo_sublst.clear()
+                continue
+
+        sickpay_masterlst = purify(sickpay_masterlst)    
+        embargo_masterlst = purify(embargo_masterlst)
 
 
     # --- OUTPUT SUMMARY --- #
@@ -1699,7 +1711,7 @@ def main():
 
         if termination_occurence != False:
             output.put_row([
-                output.put_markdown(lang("""**Total Extension Notice Period:**""", """**Gesamtverlängerung Kündigungsfrist:**""")), None,
+                output.put_markdown(lang("""**Compensation Days Notice Period:**""", """**Kompensationstage Kündigungsfrist:**""")), None,
                 output.put_markdown(str(notice_overlap)),
                 None
             ], size="35% 10px auto")
@@ -1767,10 +1779,40 @@ def main():
             output.put_markdown(lang("""[--> No probation period evaluated]""", """[--> Keine Probezeit ausgewertet]""")), None,
 
     # Scope for the summary of any embargo periods
-    with output.use_scope("scope_res_embargo"):
+    with output.use_scope("scope_res_embargo_unmerged"):
 
-        output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'), None,
         if incapacity_type != False:
+
+            output.put_markdown(lang("""### Embargo Periods (by incapacity)""", """### Sperrfristen (nach Arbeitsunfähigkeit)""")).style('margin-top: 20px'), None,
+
+            output.put_row([
+                output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")), None,
+                output.put_markdown(lang("""**Start**""", """**Start**""")), None,
+                output.put_markdown(lang("""**End**""", """**Ende**""")), None,
+                output.put_markdown(lang("""**Duration**""", """**Dauer**"""), None,
+                )])
+
+            i = 1
+            for key, value in embargo_dct.items():
+                for embargo_sublst in value:
+                    if embargo_sublst != []:
+                        output.put_row([
+                            output.put_text(str(key) + " // " + str(value.index(embargo_sublst))), None,
+                            output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
+                            output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
+                            output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
+                            ], scope="scope_res_embargo_unmerged")
+                        i += 1
+
+        else:
+            output.put_markdown(lang("""[--> No embargo periods evaluated]""", """[--> Keine Sperrfristen ausgewertet]""")), None,
+
+    # Scope for the summary of any embargo periods
+    with output.use_scope("scope_res_embargo_merged"):
+
+        if incapacity_type != False:
+
+            output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'), None,
 
             output.put_row([
                 output.put_markdown(lang("""**No.**""", """**Nr.**""")), None,
@@ -1787,7 +1829,7 @@ def main():
                         output.put_text(embargo_sublst[0].format("DD.MM.YYYY")), None,
                         output.put_text(embargo_sublst[1].format("DD.MM.YYYY")), None,
                         output.put_text(str(period_duration(embargo_sublst[0], embargo_sublst[1])) + lang(" days", " Tage")), None,
-                        ], scope="scope_res_embargo")
+                        ], scope="scope_res_embargo_merged")
                     i += 1
 
         else:
@@ -2089,7 +2131,7 @@ def main():
         output.put_markdown(lang("""
         ## Visualization
 
-        IMPORTANT: The chart below is intended only as a visual aide. Please consult the tables above for your results.
+        IMPORTANT: The chart below is intended only as a visual aid. Please consult the tables above for your results.
 
         """, """
         ## Visualisierung

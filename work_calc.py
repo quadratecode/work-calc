@@ -554,7 +554,7 @@ def main():
     termination_occurence = case["termination_occurence"]
     # Set termination occurence to true if yes
     # Set end of seniority to today if no termination was issued
-    if case.get("termination_occurence") == "No" or "Nein":
+    if termination_occurence == False:
         termination_dt = arrow.now()
 
 
@@ -1613,7 +1613,7 @@ def main():
         reason = lang("Termination during probation period.", "Kündigung während Probezeit.")
 
         # Set notice period according to user input
-        if trial_notice_input == ("Not specified in contract" or "Keine Angaben im Arbeitsvertrag"):
+        if (trial_notice_input == "Not specified in contract") or (trial_notice_input == "Keine Angaben im Arbeitsvertrag"):
             trial_notice_period = 7
         else:
             trial_notice_period = int(trial_notice_input)

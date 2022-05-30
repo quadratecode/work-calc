@@ -21,6 +21,7 @@ A web app to check the temporal validity of your termination and to calculate an
 
 ## Planned
 
+- [ ] Calculate possible reductions in vacation days
 - [ ] Further expand user defined inputs
 - [ ] Further improve layout and explanation of output
 - [ ] Allow mixing of different incapacity types

@@ -1689,31 +1689,31 @@ def main():
             output.put_row([
                 output.put_markdown(lang("""**Validity of Termination:**""", """**Gültigkeit Kündigung:**""")),
                 output.put_markdown(termination_validity),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
             output.put_row([
                 output.put_markdown(lang("""**Reason:**""", """**Begründung:**""")),
                 output.put_markdown(reason),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
 
         if trial_relevance != False:
             output.put_row([
                 output.put_markdown(lang("""**Missed Workdays Probation Period:**""", """**Verpasste Arbeitstage Probezeit:**""")),
                 output.put_markdown(str(trial_extension_dur)),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
             output.put_row([
                 output.put_markdown(lang("""**Probation Period End Date:**""", """**Enddatum Probezeit:**""")),
                 output.put_markdown(trial_lst[-1].format("DD.MM.YYYY")),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
 
         if termination_occurence != False:
             output.put_row([
                 output.put_markdown(lang("""**Compensation Days Notice Period:**""", """**Kompensationstage Kündigungsfrist:**""")),
                 output.put_markdown(str(notice_overlap)),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
             output.put_row([
                 output.put_markdown(lang("""**Employment End Date:**""", """**Enddatum Anstellung:**""")),
                 output.put_markdown(new_employment_edt.format("DD.MM.YYYY")),
-            ], size="35% 10px auto")
+            ], size="35% 50% auto")
 
         if (termination_occurence == False) and (trial_relevance == False):
             output.put_row([

@@ -1768,15 +1768,16 @@ def main():
                 output.put_text(trial_lst[1].format("DD.MM.YYYY")),
                 output.put_text(str(period_duration(trial_lst[0], trial_lst[1])) + lang(" days", " Tage")),
                 ])
+        
         else:
             output.put_markdown(lang("""[--> No probation period evaluated]""", """[--> Keine Probezeit ausgewertet]""")),
 
     # Scope for the summary of any embargo periods
     with output.use_scope("scope_res_embargo_unmerged"):
 
-        if incapacity_type != False:
+        output.put_markdown(lang("""### Embargo Periods (by incapacity)""", """### Sperrfristen (nach Arbeitsunfähigkeit)""")).style('margin-top: 20px'),
 
-            output.put_markdown(lang("""### Embargo Periods (by incapacity)""", """### Sperrfristen (nach Arbeitsunfähigkeit)""")).style('margin-top: 20px'),
+        if incapacity_type != False:
 
             output.put_row([
                 output.put_markdown(lang("""**Incapacity // Period**""", """**Arbeitsunfähigkeit // Periode**""")),
@@ -1798,14 +1799,14 @@ def main():
                         i += 1
 
         else:
-            output.put_markdown(lang("""[--> No embargo periods evaluated]""", """[--> Keine Sperrfristen ausgewertet]""")),
+            output.put_markdown(lang("""[--> No embargo periods evaluated]""", """[--> Keine Sperrfristen ausgewertet]"""))
 
     # Scope for the summary of any embargo periods
     with output.use_scope("scope_res_embargo_merged"):
 
-        if incapacity_type != False:
+        output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'),
 
-            output.put_markdown(lang("""### Embargo Periods (merged)""", """### Sperrfristen (vereinigt)""")).style('margin-top: 20px'),
+        if incapacity_type != False:
 
             output.put_row([
                 output.put_markdown(lang("""**No.**""", """**Nr.**""")),

@@ -1178,8 +1178,10 @@ def main():
         trial_extension = False
         # Check if any incapacity date lies within probation period
         for incap_sublst in incap_masterlst:
-            if (incap_sublst[0] or incap_sublst[1]).is_between(trial_lst[0], trial_lst[1], "[]"):
-                trial_extension = True
+            for day in arrow.Arrow.range("day", incap_sublst[0], incap_sublst[1]):
+                if day.is_between(trial_lst[0], trial_lst[1], "[]"):
+                    trial_extension = True
+                    break
 
         if trial_extension == True:
             for incap_sublst in incap_masterlst:

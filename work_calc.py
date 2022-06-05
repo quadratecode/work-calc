@@ -497,7 +497,6 @@ def main():
             Notes:
             - Performing an evaluation of the trial period is especially advised whenever an incapacity occured during the probation period.
             - The evaluation of a termination is especially advised whenever a termination has already been issued.
-            - If no termination is evaluated, today's date in the next year is taken as simulated termination date.
             ""","""
             ### Fallkonstellation
 
@@ -506,7 +505,6 @@ def main():
             Hinweise:
             - Die Auswertung der Probezeit ist insb. dann sinnvoll, wenn eine Arbeitsunfähigkeit während der Probezeit aufgetreten ist.
             - Die Auswertung einer Kündigung ist insb. dann sinnvoll, wenn bereits eine Kündigung erfolgt ist.
-            - Wird keine Kündigung ausgewertet, gilt das heutige Datum in einem Jahr als fiktives Enddatum.
             """))
 
     # User input: Case combinations (block required)
@@ -555,7 +553,7 @@ def main():
     # Set termination occurence to true if yes
     # Set end of seniority to today if no termination was issued
     if termination_occurence == False:
-        termination_dt = arrow.now().shift(years=1)
+        termination_dt = arrow.now().shift(years=+3)
 
 
     output.set_processbar("bar", 0.3)
